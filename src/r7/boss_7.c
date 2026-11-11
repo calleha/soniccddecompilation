@@ -323,18 +323,17 @@ static void fire_start(sprite_status *pActwk) {
 }
 
 static void door_open(sprite_status *pActwk) {
-    Sint16 d0;
 
     boss7_get_work(pEggman)->hscroll_state = 130;
 
     bossflag |= 128;
     ++boss7_get_work(pActwk)->step;
     boss7_get_work(pActwk)->timer = 60;
-    d0 = 32;
-    if (generate_flag) {
-        d0 = 31;
-    }
-    sub_sync(d0);
+
+    /* The race against Metal Sonic always uses the bad future track
+       (request 32 -> CD track 20 -> R7D), whatever timeframe the level is in.
+       egg7_goal3() puts the timeframe's own track back once the race is over. */
+    sub_sync(32);
 }
 
 static void msnc_demo2_next(sprite_status *pActwk) {
