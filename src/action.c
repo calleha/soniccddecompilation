@@ -6,6 +6,11 @@
 extern void (*act_tbl[1])(sprite_status *);
 extern bmp_info SprBmp[700];
 
+/* Number of entries in the sprite dimension table. A pattern index at or
+   beyond this is stale work-area data (the modules reuse actfree), and must
+   not be used to index SprBmp. */
+#define SPRITE_BANK_COUNT (sizeof(SprBmp) / sizeof(SprBmp[0]))
+
 void action(void) {
     sprite_status *pActwk;
     Sint32 i;
@@ -224,7 +229,7 @@ void spatset(Sint16 xposi, Sint16 yposi, sprite_status *pActwk,
     flag = pActwk->actflg;
     flag &= 3;
     for (; cnt > 0; --cnt) {
-        if (sprdat->index) {
+        if (sprdat->index && sprdat->index < SPRITE_BANK_COUNT) {
             if (linkdata >= 80)
                 return;
 

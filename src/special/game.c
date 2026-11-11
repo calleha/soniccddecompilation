@@ -295,7 +295,7 @@ static char hdatatbl5[128] = {
     8,   15,  22,  30,  38,  47,  56,  64,  72,  80,  88,  94,  100, 106, 112,
     115, 118, 120, 122, 123, 124, 125, 126, 125, 124, 122, 120, 114, 108, 102,
     96,  86,  76,  66,  56,  42,  28,  14};
-static char map_filename[] = "SPECIAL\\MAP\\SP%1dMAP.MAP";
+static char map_filename[] = "../SPECIAL/MAP/SP%1dMAP.MAP";
 static Uint16 mp01[4] = {1, 2, 3, 4};
 static Uint16 mp02[4] = {5, 6, 7, 8};
 static Uint16 mp03[4] = {9, 10, 11, 12};

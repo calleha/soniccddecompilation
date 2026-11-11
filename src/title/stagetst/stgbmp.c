@@ -1,8 +1,8 @@
 #include "../../types.h"
 #include "../common/hmx_types.h"
 
-char *SprCmpFileName = "TITLE\\BMP\\STAGES.CM_";
-char *TileCmpFileName = "TITLE\\BMP\\sndtestt.CM_";
+char *SprCmpFileName = "../TITLE/BMP/STAGES.CM_";
+char *TileCmpFileName = "../TITLE/BMP/sndtestt.CM_";
 static Uint32 hGridBack = 0;
 static Uint32 hTileBack[1] = {0};
 static Uint32 *hBmpBack[1] = {0};

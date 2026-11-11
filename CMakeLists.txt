@@ -2,6 +2,18 @@ cmake_minimum_required(VERSION 3.20)
 
 project(soniccd LANGUAGES C CXX)
 
+include(FetchContent)
+
+FetchContent_Declare(
+    SDL3_mixer
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer
+    GIT_TAG main
+    GIT_SHALLOW TRUE
+)
+
+set(SDLMIXER_VENDORED OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(SDL3_mixer)
+
 set(SONICCD_VARIANTS "all" CACHE STRING "Semicolon-separated variants to build, or all")
 option(SONICCD_BUILD_TESTS "Build backend unit tests" OFF)
 
@@ -4842,7 +4854,7 @@ if(MSVC)
 # otherwise use system sdl3
 else()
   find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
-  target_link_libraries(frontend PRIVATE SDL3::SDL3)
+  target_link_libraries(frontend PRIVATE SDL3::SDL3 SDL3_mixer::SDL3_mixer)
 endif()
 
 if(SONICCD_BUILD_TESTS)

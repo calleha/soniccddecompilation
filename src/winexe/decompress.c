@@ -12,7 +12,7 @@ int lzDecompress(cmpHeader *pHeader, char **ppAlloc, char *fileName) {
     char bytes[4];
     if (GetPrivateProfileString("Directory", "Play", "", path, sizeof(path),
                                 "sonic.ini")) {
-        strcat(path, "\\");
+        strcat(path, "/");
         strcat(path, fileName);
     } else {
         strcat(path, fileName);

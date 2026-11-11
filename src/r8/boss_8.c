@@ -206,9 +206,9 @@ void egg8(sprite_status *pActwk) {
     if ((idx = boss8_get_work(pActwk)->parent_index) != 0) {
         pMecawk = &actwk[idx];
         boss8_get_work(pMecawk)->flags &= 159;
-    } else {
+    } /* else {
         pMecawk = NULL;
-    }
+	} */
 
     egg8_warai_chk(pActwk);
 

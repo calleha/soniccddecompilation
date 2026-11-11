@@ -42,7 +42,7 @@ int drawLoading(void) {
     point.y = 0;
     makePalette();
     DAT_00425b18 = _hbmpCreate(320, 224, 0, &DAT_00425b1c);
-    DAT_00425b18 = _hbmpLoad(DAT_00425b1c, point, "loading.bmp", rect);
+    DAT_00425b18 = _hbmpLoad(DAT_00425b1c, point, "LOADING.BMP", rect);
     DAT_00425b18 = _bkgCreate(&DAT_00425b14);
     DAT_00425b18 = _bkgSetData(DAT_00425b14, DAT_00425b1c);
     DAT_00425b18 = _objSetDestination(DAT_00425b14, ghSurf);
@@ -79,7 +79,7 @@ int drawComming3(void) {
     point.y = 0;
     makePalette();
     DAT_00425b18 = _hbmpCreate(320, 224, 0, &DAT_00425b1c);
-    DAT_00425b18 = _hbmpLoad(DAT_00425b1c, point, "comming3.bmp", rect);
+    DAT_00425b18 = _hbmpLoad(DAT_00425b1c, point, "COMMING3.BMP", rect);
     DAT_00425b18 = _bkgCreate(&DAT_00425b14);
     DAT_00425b18 = _bkgSetData(DAT_00425b14, DAT_00425b1c);
     DAT_00425b18 = _objSetDestination(DAT_00425b14, ghSurf);

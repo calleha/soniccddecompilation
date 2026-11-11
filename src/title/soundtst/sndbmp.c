@@ -1,8 +1,8 @@
 #include "../../types.h"
 #include "../common/hmx_types.h"
 
-char *SprCmpFileName = "TITLE\\BMP\\SNDTESTS.CM_";
-char *TileCmpFileName = "TITLE\\BMP\\SNDTESTT.CM_";
+char *SprCmpFileName = "../TITLE/BMP/SNDTESTS.CM_";
+char *TileCmpFileName = "../TITLE/BMP/SNDTESTT.CM_";
 static Uint32 hSprDummy;
 static Uint32 hSprTitle[9];
 static Uint32 hSprBG[16];

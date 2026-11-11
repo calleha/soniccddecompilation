@@ -8,16 +8,6 @@
 
 extern Sint16 actwkchk(sprite_status **ppActwk);
 
-typedef struct {
-    Uint8 damage_flag;
-    Sint16 death_y;
-    Sint16 score_index;
-} coli1_work;
-
-static coli1_work *coli1_get_work(sprite_status *pActwk) {
-    return (coli1_work *)pActwk->actfree;
-}
-
 Uint16 escoretbl[4] = {10, 20, 50, 100};
 Uint8 colitbl[64][2] = {
     {20, 20}, {18, 12}, {12, 16}, {4, 16},  {12, 18},  {16, 16}, {6, 6},
@@ -181,6 +171,7 @@ Sint16 pcolitem(sprite_status *pActwk, sprite_status *pColliAct) {
 Sint16 pcolnomal(sprite_status *pActwk, sprite_status *pColliAct) {
     Sint16 iScoreCntwk;
     Sint16 iScoreData;
+    score_marker_work *score_marker = score_marker_work_get(pColliAct);
 
     if (plpower_a == 0 && plpower_m == 0 && pActwk->mstno.b.h != 2) {
         pcolplay(pActwk, pColliAct);
@@ -204,11 +195,11 @@ Sint16 pcolnomal(sprite_status *pActwk, sprite_status *pColliAct) {
         if ((Uint16)iScoreCntwk >= 6)
             iScoreCntwk = 6;
 
-        coli1_get_work(pColliAct)->score_index = iScoreCntwk;
+        score_marker->points_index = iScoreCntwk;
         iScoreData = escoretbl[iScoreCntwk / 2];
         if (emyscorecnt >= 32) {
             iScoreData = 1000;
-            coli1_get_work(pColliAct)->score_index = 10;
+            score_marker->points_index = 10;
         }
 
         scoreup(iScoreData);
@@ -249,7 +240,7 @@ Sint16 pcole(sprite_status *pActwk, sprite_status *pColliAct) {
 
 void playdamagechk(sprite_status *pActwk, sprite_status *pColliAct) {
 
-    coli1_get_work(pActwk)->damage_flag = 0;
+    player_work_get(pActwk)->spin_dash_counter = 0;
     if ((plpower_b & 1) == 0)
         conbine_flag = 0;
     plpower_b &= 254;
@@ -311,7 +302,7 @@ Sint16 playdieset(sprite_status *pActwk) {
     pActwk->yspeed.w = -1792;
     pActwk->xspeed.w = 0;
     pActwk->mspeed.w = 0;
-    coli1_get_work(pActwk)->death_y = pActwk->yposi.w.h;
+    player_work_get(pActwk)->death_y = pActwk->yposi.w.h;
     pActwk->mstno.b.h = 24;
     pActwk->sproffset |= 32768;
     pActwk->sprpri = 0;

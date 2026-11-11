@@ -1,8 +1,8 @@
 #include "../../types.h"
 #include "../common/hmx_types.h"
 
-char *SprCmpFileName = "TITLE\\BMP\\BESTTIME.CM_";
-char *TileCmpFileName = "TITLE\\BMP\\sndtestt.CM_";
+char *SprCmpFileName = "../TITLE/BMP/BESTTIME.CM_";
+char *TileCmpFileName = "../TITLE/BMP/SNDTESTT.CM_";
 const Uint16 NUM_BMP = 100;
 const Uint16 NUM_GRIDBMP = 1;
 const Sint32 MENUITEMMAX = 32;

@@ -85,7 +85,7 @@ int Special_LoadDLL(const char *path) {
 int Special_LoadStage(Uint32 stageMenuId) {
     Special_SelectStage(stageMenuId);
     gameInfo.SPEMode = 0;
-    return Special_LoadDLL("build/bin/Debug/special.dll");
+    return Special_LoadDLL("bin/libspecial.so");
 }
 
 frontend_state Special_Run(SDL_Renderer *renderer) {
@@ -117,7 +117,7 @@ frontend_state Special_Run(SDL_Renderer *renderer) {
     if (gameInfo.SPEMode != 0 && gameInfo.stagenm == 7) {
         Special_Unload();
         gameInfo.ta_flag = 0;
-        if (!Title_LoadDLL("build/bin/Debug/opening.dll")) {
+        if (!Title_LoadDLL("bin/libopening.so")) {
             return FRONTEND_STATE_EXIT;
         }
         return FRONTEND_STATE_TITLE;

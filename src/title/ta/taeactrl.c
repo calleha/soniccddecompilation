@@ -384,7 +384,7 @@ Sint32 TAGridBmpCreate(void) {
         s_ctx->grd_bitmaps[i] = 0;
     }
 
-    count = ld_load_grid_module(g_loader_module, "TITLE\\BMP\\TCMPTA.CM_",
+    count = ld_load_grid_module(g_loader_module, "../TITLE/BMP/TCMPTA.CM_",
                                 g_env_module, s_ctx->grd_bitmaps, 2048);
 
     if (count <= 0) {
@@ -491,7 +491,7 @@ Sint32 GridInitSub(char *path, map_info *pInfo) {
 Sint32 TAGridInit(void) {
     Sint32 i, cntInfo;
     map_info *pInfo;
-    char *Path = "TITLE\\BMP\\TA\\BG\\";
+    char *Path = "../TITLE/BMP/TA/BG/";
 
     pInfo = MapInfoTbl->info;
     cntInfo = MapInfoTbl->cnt;
@@ -526,7 +526,7 @@ Sint32 LoadPicBmp(void) {
 
     expbuf = 0;
 
-    expbuf = ld_load_cmpfile_module(g_loader_module, "TITLE\\BMP\\SCMPTA.CM_");
+    expbuf = ld_load_cmpfile_module(g_loader_module, "../TITLE/BMP/SCMPTA.CM_");
     if (expbuf != 0) {
         hdr = expbuf;
         p = (Uint8 *)expbuf + hdr->dwOff;

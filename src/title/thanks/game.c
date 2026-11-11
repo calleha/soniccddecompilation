@@ -30,9 +30,9 @@ static PALETTEENTRY endingcol[64] = {
     {0, 0, 0, 1},       {0, 0, 0, 1},       {0, 0, 0, 1},
     {0, 0, 0, 1},       {0, 0, 0, 1},       {0, 0, 0, 1},
     {0, 0, 0, 1}};
-static char MapFileA[] = "TITLE\\THANKS\\MAP\\VA_MAP.BIN";
+static char MapFileA[] = "../TITLE/THANKS/MAP/VA_MAP.BIN";
 static char MapErrorA[] = "Map Load Error [va_map.bin]\n";
-static char MapFileB[] = "TITLE\\THANKS\\MAP\\VB_MAP.BIN";
+static char MapFileB[] = "../TITLE/THANKS/MAP/VB_MAP.BIN";
 static char MapErrorB[] = "Map Load Error [vb_map.bin]\n";
 static Uint8 SeToWavTbl[80] = {
     0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 11, 12, 13, 14,

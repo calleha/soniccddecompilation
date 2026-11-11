@@ -323,12 +323,12 @@ Sint32 ld_load_sprite2(hmx_environment *buffer, char *file,
                 ld_bitmap_4to8_2(hmx_bitmap_get_scan0_module(bmp), pixbuf, wx,
                                  wy, infoSprtBmp[i].palOff, 1, flag4);
             else if (i == 31)
-                ld_bitmap_file("TITLE\\OPENING\\EXIT.BMP",
+                ld_bitmap_file("../TITLE/OPENING/EXIT.BMP",
                                hmx_bitmap_get_scan0_module(bmp), 40, 16,
                                infoSprtBmp[i].palOff, 1);
             else
 
-                ld_bitmap_file("TITLE\\OPENING\\1996SEGA.BMP",
+                ld_bitmap_file("../TITLE/OPENING/1996SEGA.BMP",
                                hmx_bitmap_get_scan0_module(bmp), 248, 8, 0, 1);
 
             pixbuf += wx * wy / 2;

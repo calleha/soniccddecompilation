@@ -94,7 +94,7 @@ static void OEUpdateHand(void) {
 
         num = 0;
     }
-    if (nTimerCunt == timeHand[num].time && (Uint32)num < 16) {
+    if ((Uint32)num < 16 && nTimerCunt == timeHand[num].time) {
 
         if (num != 0)
             OESprCreate(timeHand[num].timingPatNo);
@@ -113,7 +113,7 @@ static void OEUpdateMayu(void) {
 
         num = 0;
     }
-    if (nTimerCunt == timeMayu[num] && (Uint32)num < 2) {
+    if ((Uint32)num < 2 && nTimerCunt == timeMayu[num]) {
 
         if (num % 2 == 0)
             OESprCreate(12);

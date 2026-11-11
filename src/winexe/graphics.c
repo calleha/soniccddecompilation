@@ -134,12 +134,12 @@ typedef struct specData {
 /* 00432188 */ USHORT DAT_00432188[3] = {2000, 5000, 6000};
 /* 00432190 */ USHORT DAT_00432190[8] = {6000, 6001, 6002, 6003,
                                          6004, 6005, 6006, 6007};
-/* 004321a0 */ char DAT_004321a0[9] = "s1b0.bin";
-/* 004321ac */ char DAT_004321ac[9] = "s1b0.bin";
-/* 004321b8 */ char DAT_004321b8[9] = "s1b1.bin";
-/* 004321c4 */ char DAT_004321c4[9] = "s1b1.bin";
-/* 004321d0 */ char DAT_004321d0[9] = "s1a0.bin";
-/* 004321dc */ char DAT_004321dc[9] = "s1a1.bin";
+/* 004321a0 */ char DAT_004321a0[9] = "S1B0.BIN";
+/* 004321ac */ char DAT_004321ac[9] = "S1B0.BIN";
+/* 004321b8 */ char DAT_004321b8[9] = "S1B1.BIN";
+/* 004321c4 */ char DAT_004321c4[9] = "S1B1.BIN";
+/* 004321d0 */ char DAT_004321d0[9] = "S1A0.BIN";
+/* 004321dc */ char DAT_004321dc[9] = "S1A1.BIN";
 /* 004321e8 */ tileInfo DAT_004321e8[6] = {
     {3, 0, 0, 32, 16, 0, 203, 0, DAT_004321a0},
     {3, 32, 0, 32, 16, 0, 203, 0, DAT_004321ac},
@@ -147,12 +147,12 @@ typedef struct specData {
     {4, 32, 0, 32, 12, 0, 35, 0, DAT_004321c4},
     {1, 0, 0, 64, 10, 0, 40, 1, DAT_004321d0},
     {2, 0, 0, 64, 4, 0, 40, 1, DAT_004321dc}};
-/* 00432248 */ char DAT_00432248[12] = "mpb1_a0.bin";
-/* 00432254 */ char DAT_00432254[12] = "mpb1_a1.bin";
-/* 00432260 */ char DAT_00432260[12] = "mpb1_b0.bin";
-/* 0043226c */ char DAT_0043226c[12] = "mpb1_b1.bin";
-/* 00432278 */ char DAT_00432278[12] = "mpb1_b2.bin";
-/* 00432284 */ char DAT_00432284[12] = "mpb1_b2.bin";
+/* 00432248 */ char DAT_00432248[12] = "MPB1_A0.BIN";
+/* 00432254 */ char DAT_00432254[12] = "MPB1_A1.BIN";
+/* 00432260 */ char DAT_00432260[12] = "MPB1_B0.BIN";
+/* 0043226c */ char DAT_0043226c[12] = "MPB1_B1.BIN";
+/* 00432278 */ char DAT_00432278[12] = "MPB1_B2.BIN";
+/* 00432284 */ char DAT_00432284[12] = "MPB1_B2.BIN";
 /* 00432290 */ tileInfo DAT_00432290[6] = {
     {1, 0, 0, 32, 16, 0, 35, 0, DAT_00432248},
     {1, 32, 0, 32, 16, 0, 35, 0, DAT_00432254},
@@ -160,20 +160,20 @@ typedef struct specData {
     {2, 32, 0, 32, 16, 0, 35, 1, DAT_0043226c},
     {3, 0, 0, 32, 12, 0, 35, 0, DAT_00432278},
     {3, 8, 0, 32, 12, 0, 35, 0, DAT_00432284}};
-/* 004322f0 */ char DAT_004322f0[12] = "mpb2_a0.bin";
-/* 004322fc */ char DAT_004322fc[12] = "mpb2_a1.bin";
-/* 00432308 */ char DAT_00432308[13] = "mpb2_b00.bin";
-/* 00432318 */ char DAT_00432318[13] = "mpb2_b20.bin";
-/* 00432328 */ char DAT_00432328[13] = "mpb2_b01.bin";
-/* 00432338 */ char DAT_00432338[13] = "mpb2_b21.bin";
-/* 00432348 */ char DAT_00432348[13] = "mpb2_b02.bin";
-/* 00432358 */ char DAT_00432358[13] = "mpb2_b22.bin";
-/* 00432368 */ char DAT_00432368[13] = "mpb2_b03.bin";
-/* 00432378 */ char DAT_00432378[13] = "mpb2_b23.bin";
-/* 00432388 */ char DAT_00432388[12] = "mpb2_b1.bin";
-/* 00432394 */ char DAT_00432394[12] = "mpb2_b1.bin";
-/* 004323a0 */ char DAT_004323a0[12] = "mpb2_b4.bin";
-/* 004323ac */ char DAT_004323ac[12] = "mpb2_b4.bin";
+/* 004322f0 */ char DAT_004322f0[12] = "MPB2_A0.BIN";
+/* 004322fc */ char DAT_004322fc[12] = "MPB2_A1.BIN";
+/* 00432308 */ char DAT_00432308[13] = "MPB2_B00.BIN";
+/* 00432318 */ char DAT_00432318[13] = "MPB2_B20.BIN";
+/* 00432328 */ char DAT_00432328[13] = "MPB2_B01.BIN";
+/* 00432338 */ char DAT_00432338[13] = "MPB2_B21.BIN";
+/* 00432348 */ char DAT_00432348[13] = "MPB2_B02.BIN";
+/* 00432358 */ char DAT_00432358[13] = "MPB2_B22.BIN";
+/* 00432368 */ char DAT_00432368[13] = "MPB2_B03.BIN";
+/* 00432378 */ char DAT_00432378[13] = "MPB2_B23.BIN";
+/* 00432388 */ char DAT_00432388[12] = "MPB2_B1.BIN";
+/* 00432394 */ char DAT_00432394[12] = "MPB2_B1.BIN";
+/* 004323a0 */ char DAT_004323a0[12] = "MPB2_B4.BIN";
+/* 004323ac */ char DAT_004323ac[12] = "MPB2_B4.BIN";
 /* 004323b8 */ tileInfo DAT_004323b8[14] = {
     {1, 0, 0, 32, 16, 0, 34, 1, DAT_004322f0},
     {1, 32, 0, 32, 16, 0, 34, 1, DAT_004322fc},
@@ -189,12 +189,12 @@ typedef struct specData {
     {6, 32, 0, 32, 2, 0, 34, 1, DAT_00432394},
     {7, 0, 0, 32, 12, 0, 41, 1, DAT_004323a0},
     {7, 8, 0, 32, 12, 0, 41, 1, DAT_004323ac}};
-/* 00432498 */ char DAT_00432498[12] = "mpb3_b1.bin";
-/* 004324a4 */ char DAT_004324a4[12] = "mpb3_b3.bin";
-/* 004324b0 */ char DAT_004324b0[12] = "mpb3_a0.bin";
-/* 004324bc */ char DAT_004324bc[12] = "mpb3_a1.bin";
-/* 004324c8 */ char DAT_004324c8[12] = "mpb3_b0.bin";
-/* 004324d4 */ char DAT_004324d4[12] = "mpb3_b2.bin";
+/* 00432498 */ char DAT_00432498[12] = "MPB3_B1.BIN";
+/* 004324a4 */ char DAT_004324a4[12] = "MPB3_B3.BIN";
+/* 004324b0 */ char DAT_004324b0[12] = "MPB3_A0.BIN";
+/* 004324bc */ char DAT_004324bc[12] = "MPB3_A1.BIN";
+/* 004324c8 */ char DAT_004324c8[12] = "MPB3_B0.BIN";
+/* 004324d4 */ char DAT_004324d4[12] = "MPB3_B2.BIN";
 /* 004324e0 */ tileInfo DAT_004324e0[6] = {
     {1, 0, 0, 32, 5, 0, 35, 1, DAT_00432498},
     {1, 32, 0, 32, 5, 0, 35, 1, DAT_004324a4},
@@ -202,12 +202,12 @@ typedef struct specData {
     {2, 32, 0, 32, 16, 0, 35, 1, DAT_004324bc},
     {3, 0, 0, 32, 11, 0, 35, 1, DAT_004324c8},
     {3, 32, 0, 32, 11, 0, 35, 1, DAT_004324d4}};
-/* 00432540 */ char DAT_00432540[12] = "mpb4_a0.bin";
-/* 0043254c */ char DAT_0043254c[12] = "mpb4_a1.bin";
-/* 00432558 */ char DAT_00432558[12] = "mpb4_b0.bin";
-/* 00432564 */ char DAT_00432564[12] = "mpb4_b1.bin";
-/* 00432570 */ char DAT_00432570[12] = "mpb4_b2.bin";
-/* 0043257c */ char DAT_0043257c[12] = "mpb4_b2.bin";
+/* 00432540 */ char DAT_00432540[12] = "MPB4_A0.BIN";
+/* 0043254c */ char DAT_0043254c[12] = "MPB4_A1.BIN";
+/* 00432558 */ char DAT_00432558[12] = "MPB4_B0.BIN";
+/* 00432564 */ char DAT_00432564[12] = "MPB4_B1.BIN";
+/* 00432570 */ char DAT_00432570[12] = "MPB4_B2.BIN";
+/* 0043257c */ char DAT_0043257c[12] = "MPB4_B2.BIN";
 /* 00432588 */ tileInfo DAT_00432588[6] = {
     {1, 0, 0, 32, 14, 0, 172, 1, DAT_00432540},
     {1, 32, 0, 32, 14, 0, 172, 1, DAT_0043254c},
@@ -215,12 +215,12 @@ typedef struct specData {
     {3, 32, 0, 32, 16, 0, -97, 1, DAT_00432564},
     {2, 0, 0, 32, 12, 0, 35, 0, DAT_00432570},
     {2, 8, 0, 32, 12, 0, 35, 0, DAT_0043257c}};
-/* 004325e8 */ char DAT_004325e8[12] = "sp6_a01.bin";
-/* 004325f4 */ char DAT_004325f4[12] = "sp6_a02.bin";
-/* 00432600 */ char DAT_00432600[11] = "sp6_b0.bin";
-/* 0043260c */ char DAT_0043260c[11] = "sp6_b0.bin";
-/* 00432618 */ char DAT_00432618[12] = "sp6_000.bin";
-/* 00432624 */ char DAT_00432624[12] = "sp6_000.bin";
+/* 004325e8 */ char DAT_004325e8[12] = "SP6_A01.BIN";
+/* 004325f4 */ char DAT_004325f4[12] = "SP6_A02.BIN";
+/* 00432600 */ char DAT_00432600[11] = "SP6_B0.BIN";
+/* 0043260c */ char DAT_0043260c[11] = "SP6_B0.BIN";
+/* 00432618 */ char DAT_00432618[12] = "SP6_000.BIN";
+/* 00432624 */ char DAT_00432624[12] = "SP6_000.BIN";
 /* 00432630 */ tileInfo DAT_00432630[6] = {
     {1, 0, 0, 32, 14, 0, 35, 1, DAT_004325e8},
     {1, 32, 0, 32, 14, 0, 35, 1, DAT_004325f4},
@@ -228,16 +228,16 @@ typedef struct specData {
     {3, 32, 0, 32, 16, 0, 55, 1, DAT_0043260c},
     {2, 0, 0, 32, 12, 0, 52, 0, DAT_00432618},
     {2, 8, 0, 32, 12, 0, 52, 0, DAT_00432624}};
-/* 00432690 */ char DAT_00432690[12] = "mpb6b2l.bin";
-/* 0043269c */ char DAT_0043269c[12] = "mpb6b2r.bin";
-/* 004326a8 */ char DAT_004326a8[12] = "mpb6a1r.bin";
-/* 004326b4 */ char DAT_004326b4[12] = "mpb6a1l.bin";
-/* 004326c0 */ char DAT_004326c0[12] = "mpb6a2r.bin";
-/* 004326cc */ char DAT_004326cc[12] = "mpb6a2l.bin";
-/* 004326d8 */ char DAT_004326d8[12] = "mpb6b1l.bin";
-/* 004326e4 */ char DAT_004326e4[12] = "mpb6b1r.bin";
-/* 004326f0 */ char DAT_004326f0[12] = "mpb6_b8.bin";
-/* 004326fc */ char DAT_004326fc[12] = "mpb6_b8.bin";
+/* 00432690 */ char DAT_00432690[12] = "MPB6B2L.BIN";
+/* 0043269c */ char DAT_0043269c[12] = "MPB6B2R.BIN";
+/* 004326a8 */ char DAT_004326a8[12] = "MPB6A1R.BIN";
+/* 004326b4 */ char DAT_004326b4[12] = "MPB6A1L.BIN";
+/* 004326c0 */ char DAT_004326c0[12] = "MPB6A2R.BIN";
+/* 004326cc */ char DAT_004326cc[12] = "MPB6A2L.BIN";
+/* 004326d8 */ char DAT_004326d8[12] = "MPB6B1L.BIN";
+/* 004326e4 */ char DAT_004326e4[12] = "MPB6B1R.BIN";
+/* 004326f0 */ char DAT_004326f0[12] = "MPB6_B8.BIN";
+/* 004326fc */ char DAT_004326fc[12] = "MPB6_B8.BIN";
 /* 00432708 */ tileInfo DAT_00432708[10] = {
     {1, 0, 0, 32, 6, 0, 35, 1, DAT_00432690},
     {1, 32, 0, 32, 6, 0, 35, 1, DAT_0043269c},
@@ -249,23 +249,23 @@ typedef struct specData {
     {4, 32, 0, 32, 10, 0, 35, 1, DAT_004326e4},
     {5, 0, 0, 32, 12, 0, 471, 0, DAT_004326f0},
     {5, 8, 0, 32, 12, 0, 471, 0, DAT_004326fc}};
-/* 004327a8 */ char DAT_004327a8[8] = "egg.bin";
-/* 004327b0 */ char DAT_004327b0[12] = "mpb7_b1.bin";
-/* 004327bc */ char DAT_004327bc[12] = "mpb7_b1.bin";
+/* 004327a8 */ char DAT_004327a8[8] = "EGG.BIN";
+/* 004327b0 */ char DAT_004327b0[12] = "MPB7_B1.BIN";
+/* 004327bc */ char DAT_004327bc[12] = "MBP7_B1.BIN";
 /* 004327c8 */ tileInfo DAT_004327c8[3] = {
     {1, 0, 0, 40, 16, 0, 41, 0, DAT_004327a8},
     {2, 0, 0, 32, 12, 0, 35, 0, DAT_004327b0},
     {2, 8, 0, 32, 12, 0, 35, 0, DAT_004327bc}};
-/* 004327f8 */ char DAT_004327f8[11] = "panel1.bin";
-/* 00432804 */ char DAT_00432804[11] = "panel2.bin";
+/* 004327f8 */ char DAT_004327f8[11] = "PANEL1.BIN";
+/* 00432804 */ char DAT_00432804[11] = "PANEL2.BIN";
 /* 00432810 */ tileInfo DAT_00432810[2] = {
     {0, 0, 0, 40, 2, 0, 0, 0, DAT_004327f8},
     {0, 0, 0, 40, 2, 0, 0, 0, DAT_00432804}};
-/* 00432830 */ char DAT_00432830[12] = "clrback.bin";
+/* 00432830 */ char DAT_00432830[12] = "CLRBACK.BIN";
 /* 00432840 */ tileInfo DAT_00432840[1] = {
     {1, 0, 0, 40, 28, 0, 687, 1, DAT_00432830}};
-/* 00432850 */ char DAT_00432850[11] = "cgwarp.bin";
-/* 0043285c */ char DAT_0043285c[11] = "cgwarp.bin";
+/* 00432850 */ char DAT_00432850[11] = "CGWARP.BIN";
+/* 0043285c */ char DAT_0043285c[11] = "CGWARP.BIN";
 /* 00432868 */ tileInfo DAT_00432868[2] = {
     {1, 0, 0, 40, 28, 0, 0, 1, DAT_00432850},
     {1, 0, 28, 40, 4, 0, 0, 1, DAT_0043285c}};
@@ -280,8 +280,8 @@ typedef struct specData {
 /* 004328f0 */ POINT gCursorPos;
 /* 004328f8 */ unsigned short DAT_004328f8[8] = {0,      0x0B00, 0x8000, 0xFF30,
                                                  0xFF30, 0,      0xBF30, 0};
-/* 00432c24 */ char DAT_00432c24[17] = "SPECIAL\\BMP\\FIX\\";
-/* 00432c38 */ char DAT_00432c38[6] = "WARP\\";
+/* 00432c24 */ char DAT_00432c24[17] = "../SPECIAL/BMP/FIX/";
+/* 00432c38 */ char DAT_00432c38[6] = "../WARP/";
 /* 0043327c */ PALETTEENTRY *gpColorwk = 0;
 /* 00433284 */ PALETTEENTRY *gpColorwk3 = 0;
 /* 00433290 */ int_union *gpHscrollbuff = 0;
@@ -581,16 +581,16 @@ int SpriteBMPCreate(void) {
     }
     if (gbSpriteLoadingEnabled) {
         if (gbWarpLoaded) {
-            lstrcpy(fileName, "WARP\\SCMPWARP.CM_");
+            lstrcpy(fileName, "../WARP/SCMPWARP.CM_");
         } else if (gbSpecialStageLoaded) {
-            lstrcpy(fileName, "SPECIAL\\SCMPSPE.CM_");
+            lstrcpy(fileName, "../SPECIAL/SCMPSPE.CM_");
         } else if (gbLittlePlanetLoaded) {
-            lstrcpy(fileName, "TITLE\\PLANET\\CG\\SCMPLP.CM_");
+            lstrcpy(fileName, "../TITLE/PLANET/CG/SCMPLP.CM_");
         } else if (gbThanksLoaded) {
-            lstrcpy(fileName, "TITLE\\THANKS\\CG\\SCMPTH.CM_");
+            lstrcpy(fileName, "../TITLE/THANKS/CG/SCMPTH.CM_");
         } else {
             (*gpGetRoundStr)(gKeepWork.stageno.w, gKeepWork.time_flag, msg);
-            wsprintf(fileName, "R%c\\%3s\\SCMP%3s.CM_", msg[0], msg, msg);
+            wsprintf(fileName, "../R%c/%3s/SCMP%3s.CM_", msg[0], msg, msg);
         }
         wsprintf(msg, "Read Tile CMP BMP: %s\n", fileName);
         log(msg);
@@ -607,16 +607,16 @@ int SpriteBMPCreate(void) {
             return -1;
         }
         if (gbWarpLoaded) {
-            lstrcpy(fileName, "WARP\\SCMPWARP.TXT");
+            lstrcpy(fileName, "../WARP/SCMPWARP.TXT");
         } else if (gbSpecialStageLoaded) {
-            lstrcpy(fileName, "SPECIAL\\SCMPSPE.TXT");
+            lstrcpy(fileName, "../SPECIAL/SCMPSPE.TXT");
         } else if (gbLittlePlanetLoaded) {
-            lstrcpy(fileName, "TITLE\\PLANET\\CG\\SCMPLP.TXT");
+            lstrcpy(fileName, "../TITLE/PLANET/CG/SCMPLP.TXT");
         } else if (gbThanksLoaded) {
-            lstrcpy(fileName, "TITLE\\THANKS\\CG\\SCMPTH.TXT");
+            lstrcpy(fileName, "../TITLE/THANKS/CG/SCMPTH.TXT");
         } else {
             (*gpGetRoundStr)(gKeepWork.stageno.w, gKeepWork.time_flag, msg);
-            wsprintf(fileName, "R%c\\%3s\\SCMP%3s.TXT", msg[0], msg, msg);
+            wsprintf(fileName, "../R%c/%3s/SCMP%3s.TXT", msg[0], msg, msg);
         }
         hFile = _lopen(fileName, OF_READ);
         if (hFile == -1) {
@@ -634,7 +634,7 @@ int SpriteBMPCreate(void) {
             }
             if (gbWarpLoaded) {
                 lstrcpy(msg, fileName);
-                lstrcpy(fileName, "WARP\\");
+                lstrcpy(fileName, "../WARP/");
                 lstrcat(fileName, msg);
             } else if (gbLittlePlanetLoaded) {
                 wsprintf(fileName, "%s%s", "TITLE", &fileName[5]);
@@ -813,9 +813,9 @@ int RotateBmpTileCreate(void) {
     int err;
     char msg[80];
     if (gbSpecialStageLoaded) {
-        wsprintf(buffer, "SPECIAL\\CG\\SP%1dCG32.CM_", gKeepWork.stagenm + 1);
+        wsprintf(buffer, "../SPECIAL/CG/SP%1dCG32.CM_", gKeepWork.stagenm + 1);
     } else {
-        lstrcpy(buffer, "TITLE\\PLANET\\CG\\PLANET.CM_");
+        lstrcpy(buffer, "../TITLE/PLANET/CG/PLANET.CM_");
     }
     err = extractRotatingTiles(&DAT_0041dd68, &local_ac, buffer);
     if (err != 0) {
@@ -964,21 +964,21 @@ int GridBMPCreate(void) {
     int err;
     int i;
     if (gbWarpLoaded) {
-        lstrcpy(fileName, "WARP\\TCMPWARP.CM_");
+        lstrcpy(fileName, "../WARP/TCMPWARP.CM_");
     } else if (gbSpecialStageLoaded) {
         if (gKeepWork.SPEMode == 0) {
-            wsprintf(fileName, "SPECIAL\\BMP\\FIX\\TCMPS%1d.CM_",
+            wsprintf(fileName, "../SPECIAL/BMP/FIX/TCMPS%1d.CM_",
                      gKeepWork.stagenm + 1);
         } else {
-            lstrcpy(fileName, "SPECIAL\\BMP\\FIX\\SCLEAR.CM_");
+            lstrcpy(fileName, "../SPECIAL/BMP/FIX/SCLEAR.CM_");
         }
     } else if (gbLittlePlanetLoaded) {
-        lstrcpy(fileName, "TITLE\\PLANET\\CG\\LPBS.CM_");
+        lstrcpy(fileName, "../TITLE/PLANET/CG/LPBS.CM_");
     } else if (gbThanksLoaded) {
-        lstrcpy(fileName, "TITLE\\THANKS\\CG\\SCR_A.CM_");
+        lstrcpy(fileName, "../TITLE/THANKS/CG/SCR_A.CM_");
     } else {
         (*gpGetRoundStr)(gKeepWork.stageno.w, gKeepWork.time_flag, buffer);
-        wsprintf(fileName, "R%c\\%3s\\TCMP%3s.CM_", buffer[0], buffer, buffer);
+        wsprintf(fileName, "../R%c/%3s/TCMP%3s.CM_", buffer[0], buffer, buffer);
     }
     wsprintfA(buffer, "Read Tile CMP BMP: %s\n", fileName);
     log(buffer);
@@ -2373,7 +2373,7 @@ int GridPtnchgBMPCreate(void) {
         return 0;
     }
     (*gpGetRoundStr)(gKeepWork.stageno.w, gKeepWork.time_flag, buffer);
-    wsprintf(path, "R%c\\%3s\\TCHG%3s.CM_", buffer[0], buffer, buffer);
+    wsprintf(path, "../R%c/%3s/TCHG%3s.CM_", buffer[0], buffer, buffer);
     wsprintf(buffer, "Read Tile Pattern Change CMP BMP: %s\n", path);
     log(buffer);
     err = extractTiles(&gpBmpArray, &tile, path);

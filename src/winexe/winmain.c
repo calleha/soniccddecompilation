@@ -1002,7 +1002,7 @@ void __stdcall toggleSoundQuality(void) {
 void retrieveHelpFilePath(void) {
     if (GetPrivateProfileString("Directory", "Install", "", gHelpFilePath,
                                 sizeof(gHelpFilePath), "sonic.ini") != 0) {
-        strcat(gHelpFilePath, "\\");
+        strcat(gHelpFilePath, "/");
         strcat(gHelpFilePath, "sonic.hlp");
     } else {
         strcat(gHelpFilePath, "sonic.hlp");
@@ -1967,7 +1967,7 @@ BOOL loadSpecialStage(int stageMenuId) {
     gbSpecialStageLoaded = TRUE;
     drawLoading();
     deleteSplash();
-    if (!loadGameDll("SPECIAL\\SPECIAL.DLL")) {
+    if (!loadGameDll("../bin/libspecial.so")) {
         return FALSE;
     }
     gFadeFlag = 0;
@@ -1995,7 +1995,7 @@ BOOL loadWarp(void) {
     int_union scrbhposiw;
     unloadGame();
     gbWarpLoaded = TRUE;
-    if (!loadGameDll("WARP\\WARP.DLL")) {
+    if (!loadGameDll("../bin/libwarp.so")) {
         return FALSE;
     }
     gFadeFlag = 0;
@@ -2021,7 +2021,7 @@ BOOL loadWarp(void) {
 
 // 0040b160
 BOOL loadThanks(void) {
-    if (!loadGameDll("TITLE\\THANKS\\THANKS.DLL")) {
+    if (!loadGameDll("../bin/libthanks.so")) {
         return FALSE;
     }
     gFadeFlag = 0;
@@ -2049,7 +2049,7 @@ BOOL loadPlanet(void) {
     fillColorwk(0);
     makePalette2();
     unloadGame();
-    if (!loadGameDll("TITLE\\PLANET\\PLANET.DLL")) {
+    if (!loadGameDll("../bin/libplanet.so")) {
         return FALSE;
     }
     gFadeFlag = 0;
@@ -2079,7 +2079,7 @@ BOOL loadPlanet(void) {
 BOOL loadTimeAttack(BOOL param_1) {
     unloadGame();
     gbTimeAttackLoaded = TRUE;
-    if (!loadGameDll("TITLE\\TA\\TA.DLL")) {
+    if (!loadGameDll("../bin/libta.so")) {
         return FALSE;
     }
     gFadeFlag = 0;
@@ -2108,7 +2108,7 @@ BOOL loadStageByMenu(UINT stageMenuId) {
     deleteSplash();
     setStage(stageMenuId);
     readStageString(stageId);
-    wsprintf(path, "R%c\\%3s\\DLL%3s.DLL", stageId[0], stageId, stageId);
+    wsprintf(path, "../bin/libr%3s.so", stageId[0], stageId, stageId);
     if (stageId[1] == '3' && stageId[2] == 'C') {
         DAT_0042570c = TRUE;
     } else {
@@ -2470,10 +2470,10 @@ void writeRecording(void) {
     OFSTRUCT ofStruct;
     HFILE hFile;
     if (gbSpecialStageLoaded == TRUE) {
-        wsprintf(path, "special%1c.BIN", gKeepWork.stagenm + 49);
+        wsprintf(path, "../SPECIAL%1c.BIN", gKeepWork.stagenm + 49);
     } else {
         readStageString(buffer);
-        wsprintf(path, "KEY%3s.BIN", buffer);
+        wsprintf(path, "../KEY%3s.BIN", buffer);
     }
     hFile = OpenFile(path, &ofStruct, 4096);
     if (hFile == -1) {

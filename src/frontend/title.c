@@ -121,7 +121,7 @@ static frontend_state ContinueGame(void) {
 }
 
 static frontend_state LoadSaveManager(void) {
-    if (!Title_SwitchDLL("build/bin/Debug/savedata.dll")) {
+    if (!Title_SwitchDLL("bin/libsavedata.so")) {
         return FRONTEND_STATE_EXIT;
     }
     return FRONTEND_STATE_TITLE;
@@ -136,7 +136,7 @@ static frontend_state LoadTimeAttack(void) {
 }
 
 static frontend_state LoadOpening(void) {
-    if (!Title_SwitchDLL("build/bin/Debug/opening.dll")) {
+    if (!Title_SwitchDLL("bin/libopening.so")) {
         return FRONTEND_STATE_EXIT;
     }
     return FRONTEND_STATE_TITLE;

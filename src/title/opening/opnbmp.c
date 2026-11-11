@@ -1,8 +1,8 @@
 #include "../../types.h"
 #include "../common/hmx_types.h"
 
-char *SprCmpFileName = "TITLE\\BMP\\OPENINGS.CM_";
-char *TileCmpFileName = "TITLE\\BMP\\OPENINGT.CM_";
+char *SprCmpFileName = "../TITLE/BMP/OPENINGS.CM_";
+char *TileCmpFileName = "../TITLE/BMP/OPENINGT.CM_";
 static Uint32 hSpr[34];
 static Uint32 hGrid[10];
 static Uint32 *hBmpBack[1];

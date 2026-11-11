@@ -38,7 +38,7 @@ void ReadBlockMap(void) {
 
     GetRoundStr(stageno.w, time_flag, buf);
 
-    sPrintf(fn, "R%c\\%3s\\T%3s.MAP", buf[0], buf, buf);
+    sPrintf(fn, "../R%c/%3s/T%3s.MAP", buf[0], buf, buf);
 
     sMemSet(blockwk, 0, sizeof(blockwk));
     hf = sOpenFile(fn);
@@ -65,7 +65,7 @@ void ReadScrolMap(void) {
 
     GetRoundStr(stageno.w, time_flag, buf);
 
-    sPrintf(fn, "R%c\\%3s\\MAP%3s.BIN", buf[0], buf, buf);
+    sPrintf(fn, "../R%c/%3s/MAP%3s.BIN", buf[0], buf, buf);
 
     p = pmapwk;
     for (i = 0; i < 128; ++i) {

@@ -39,7 +39,7 @@ int Warp_LoadDLL(const char *path) {
 }
 
 int Warp_Load(void) {
-    return Warp_LoadDLL("build/bin/Debug/warp.dll");
+    return Warp_LoadDLL("bin/libwarp.so");
 }
 
 frontend_state Warp_Run(SDL_Renderer *renderer) {

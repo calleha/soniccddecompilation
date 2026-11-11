@@ -6,8 +6,17 @@
 static FILE *files[MAX_FILES];
 
 FILE *File_Open(const char *path, const char *mode) {
+    char normalized[512];
     char fullPath[512];
-    snprintf(fullPath, sizeof(fullPath), "assets/%s", path);
+    size_t i;
+
+    /* Decompiled call sites still build some paths with Windows separators. */
+    for (i = 0; path[i] != '\0' && i < sizeof(normalized) - 1; i++) {
+        normalized[i] = (path[i] == '\\') ? '/' : path[i];
+    }
+    normalized[i] = '\0';
+
+    snprintf(fullPath, sizeof(fullPath), "assets/%s", normalized);
     return fopen(fullPath, mode);
 }
 

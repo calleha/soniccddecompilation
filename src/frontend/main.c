@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
             return -1;
         }
     } else {
-        if (!Title_LoadDLL("build/bin/Debug/opening.dll")) {
+        if (!Title_LoadDLL("bin/libopening.so")) {
             return -1;
         }
     }
@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
         }
 
         Uint8 pressed = 0;
-        const Uint8 *keys = SDL_GetKeyboardState(NULL);
+        const bool *keys = SDL_GetKeyboardState(NULL);
         if (keys[SDL_SCANCODE_W]) { pressed |= 0x01; }
         if (keys[SDL_SCANCODE_S]) { pressed |= 0x02; }
         if (keys[SDL_SCANCODE_A]) { pressed |= 0x04; }

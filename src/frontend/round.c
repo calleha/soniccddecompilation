@@ -202,14 +202,14 @@ static int Round_LoadGraphics(void) {
         Round_ReadStageString(stageId, sizeof(stageId));
     }
 
-    snprintf(tilePath, sizeof(tilePath), "R%c/%s/TCMP%s.CM_", stageId[0], stageId, stageId);
+    snprintf(tilePath, sizeof(tilePath), "../R%c/%s/TCMP%s.CM_", stageId[0], stageId, stageId);
     if (!Graphics_LoadTiles(tilePath)) {
         SDL_Log("Couldn't load round tiles: %s", tilePath);
         return 0;
     }
 
     if (Round_UsesTileChange()) {
-        snprintf(tileChangePath, sizeof(tileChangePath), "R%c/%s/TCHG%s.CM_", stageId[0], stageId, stageId);
+        snprintf(tileChangePath, sizeof(tileChangePath), "../R%c/%s/TCHG%s.CM_", stageId[0], stageId, stageId);
         if (!Graphics_LoadChangeTiles(tileChangePath)) {
             SDL_Log("Couldn't load round tile changes: %s", tileChangePath);
             return 0;
@@ -221,7 +221,7 @@ static int Round_LoadGraphics(void) {
         SDL_Log("Round DLL did not provide a sprite info table");
         return 0;
     }
-    snprintf(spritePath, sizeof(spritePath), "R%c/%s/SCMP%s.CM_", stageId[0], stageId, stageId);
+    snprintf(spritePath, sizeof(spritePath), "../R%c/%s/SCMP%s.CM_", stageId[0], stageId, stageId);
     if (!Graphics_LoadSprites(spritePath, spriteInfo, ROUND_SPRITE_COUNT)) {
         SDL_Log("Couldn't load round sprites: %s", spritePath);
         return 0;
@@ -270,7 +270,7 @@ int Round_LoadStageByMenu(Uint32 stageMenuId) {
     Round_SetStageByMenu(stageMenuId);
     Round_ReadStageString(stageId, sizeof(stageId));
     Round_NormalizeStageId(dllName, sizeof(dllName), stageId, 1);
-    snprintf(dllPath, sizeof(dllPath), "build/bin/Debug/r%s.dll", dllName);
+    snprintf(dllPath, sizeof(dllPath), "bin/libr%s.so", dllName);
 
     return Round_LoadStagePath(dllPath);
 }
@@ -287,7 +287,7 @@ int Round_LoadStageByName(const char *stageId) {
     }
 
     Round_NormalizeStageId(dllName, sizeof(dllName), normalizedStageId, 1);
-    snprintf(dllPath, sizeof(dllPath), "build/bin/Debug/r%s.dll", dllName);
+    snprintf(dllPath, sizeof(dllPath), "bin/libr%s.so", dllName);
 
     return Round_LoadStagePath(dllPath);
 }
@@ -302,7 +302,7 @@ static frontend_state Round_LoadNextStage(void) {
         Round_Unload();
         scoreData.roundNo = 7;
         WriteScoreData(ReadScoreIndx(0), &scoreData, 0);
-        if (!Title_LoadDLL("build/bin/Debug/opening.dll")) {
+        if (!Title_LoadDLL("bin/libopening.so")) {
             return FRONTEND_STATE_EXIT;
         }
         return FRONTEND_STATE_TITLE;
@@ -357,7 +357,7 @@ static frontend_state Round_HandlePlayerDeath(void) {
     }
 
     Round_Unload();
-    if (!Title_LoadDLL("build/bin/Debug/opening.dll")) {
+    if (!Title_LoadDLL("bin/libopening.so")) {
         return FRONTEND_STATE_EXIT;
     }
     return FRONTEND_STATE_TITLE;

@@ -2,8 +2,8 @@
 #include "../common/hmx_types.h"
 #include "svdbmp.h"
 
-char *SprCmpFileName = "TITLE\\BMP\\SAVEDATS.CM_";
-char *TileCmpFileName = "TITLE\\BMP\\SAVEDATT.CM_";
+char *SprCmpFileName = "../TITLE/BMP/SAVEDATS.CM_";
+char *TileCmpFileName = "../TITLE/BMP/SAVEDATT.CM_";
 Sint32 nPosiXSprMes[27] = {96,  104, 112, 120, 128, 136, 144, 152, 160,
                            168, 176, 184, 192, 200, 208, 216, 224, 232,
                            240, 248, 256, 264, 272, 280, 288, 296, 304};

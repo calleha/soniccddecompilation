@@ -462,6 +462,17 @@ void EAsprset(Sint16 x, Sint16 y, Uint16 index, Uint16 linkdata, Uint16 reverse)
 	if (linkdata >= MAX_SPRITES) {
 		return;
 	}
+	/* Decompiled modules can hand us an index past the sprite bank (e.g. a
+	   stale work-area value); drawing it would read outside spriteBitmaps. */
+	if (index && index >= spriteBitmaps.size()) {
+		static int reported;
+		if (!reported) {
+			reported = 1;
+			SDL_Log("EAsprset: sprite index %u out of range (%zu loaded), skipping",
+			        (unsigned)index, spriteBitmaps.size());
+		}
+		return;
+	}
 	sprites[linkdata].x = x;
 	sprites[linkdata].y = y;
 	sprites[linkdata].index = index;
@@ -718,7 +729,7 @@ static Uint16 GetTileHandle(Sint32 tileIndex, Uint16 flags) {
 }
 
 static int LoadSpecialGridBin(const SpecialTileInfo *info) {
-	std::string path = std::format("SPECIAL/BMP/FIX/{}", info->fileName);
+	std::string path = std::format("../SPECIAL/BMP/FIX/{}", info->fileName);
 	Uint8 encoded[2];
 	FILE *file = File_Open(path.c_str(), "rb");
 	if (!file) {
@@ -812,7 +823,7 @@ int Graphics_LoadChangeTiles(const char *path) {
 
 static int Graphics_LoadWarpGridRows(int dstY, int rows) {
 	Uint8 encoded[2];
-	FILE *file = File_Open("WARP/CGWARP.BIN", "rb");
+	FILE *file = File_Open("../WARP/CGWARP.BIN", "rb");
 	if (!file) {
 		SDL_Log("couldn't open WARP/CGWARP.BIN");
 		return 0;
@@ -849,13 +860,13 @@ int Graphics_LoadWarp(bmp_info *spriteInfo, int spriteInfoCount) {
 	specialClearMode = false;
 	Hmx_SetActive(0);
 	ClrSpriteDebug();
-	if (!Graphics_LoadTiles("WARP/TCMPWARP.CM_")) {
+	if (!Graphics_LoadTiles("../WARP/TCMPWARP.CM_")) {
 		return 0;
 	}
 	if (!Graphics_LoadWarpGrid()) {
 		return 0;
 	}
-	if (!Graphics_LoadSprites("WARP/SCMPWARP.CM_", spriteInfo, spriteInfoCount)) {
+	if (!Graphics_LoadSprites("../WARP/SCMPWARP.CM_", spriteInfo, spriteInfoCount)) {
 		return 0;
 	}
 	return 1;
@@ -868,14 +879,14 @@ int Graphics_LoadPlanet(const Uint16 *rotateMap, bmp_info *spriteInfo, int sprit
 	Hmx_SetActive(0);
 	memset(tileGrids, 0, sizeof(tileGrids));
 	ClrSpriteDebug();
-	if (!Graphics_LoadTiles("TITLE/PLANET/CG/LPBS.CM_")) {
+	if (!Graphics_LoadTiles("../TITLE/PLANET/CG/LPBS.CM_")) {
 		return 0;
 	}
-	if (!LoadRotateTileSet("TITLE/PLANET/CG/PLANET.CM_")) {
+	if (!LoadRotateTileSet("../TITLE/PLANET/CG/PLANET.CM_")) {
 		return 0;
 	}
 	Graphics_SetPlanetRotateGrid(rotateMap);
-	if (!Graphics_LoadSprites("TITLE/PLANET/CG/SCMPLP.CM_", spriteInfo, spriteInfoCount)) {
+	if (!Graphics_LoadSprites("../TITLE/PLANET/CG/SCMPLP.CM_", spriteInfo, spriteInfoCount)) {
 		return 0;
 	}
 	return 1;
@@ -887,8 +898,8 @@ int Graphics_LoadSpecialStage(int stageNumber, const Uint16 *rotateMap, bmp_info
 	specialClearMode = false;
 	Hmx_SetActive(0);
 	specialStageIndex = stageNumber;
-	std::string fixedPath = std::format("SPECIAL/BMP/FIX/TCMPS{}.CM_", stageNumber + 1);
-	std::string rotatePath = std::format("SPECIAL/CG/SP{}CG32.CM_", stageNumber + 1);
+	std::string fixedPath = std::format("../SPECIAL/BMP/FIX/TCMPS{}.CM_", stageNumber + 1);
+	std::string rotatePath = std::format("../SPECIAL/CG/SP{}CG32.CM_", stageNumber + 1);
 	if (!Graphics_LoadTiles(fixedPath.c_str())) {
 		return 0;
 	}
@@ -899,7 +910,7 @@ int Graphics_LoadSpecialStage(int stageNumber, const Uint16 *rotateMap, bmp_info
 		return 0;
 	}
 	Graphics_SetRotateGrid(rotateMap);
-	if (!Graphics_LoadSprites("SPECIAL/SCMPSPE.CM_", spriteInfo, spriteInfoCount)) {
+	if (!Graphics_LoadSprites("../SPECIAL/SCMPSPE.CM_", spriteInfo, spriteInfoCount)) {
 		return 0;
 	}
 	return 1;
@@ -911,7 +922,7 @@ int Graphics_LoadSpecialClearScreen(void) {
 	specialClearMode = true;
 	Hmx_SetActive(0);
 	ClrSpriteDebug();
-	if (!Graphics_LoadTiles("SPECIAL/BMP/FIX/SCLEAR.CM_")) {
+	if (!Graphics_LoadTiles("../SPECIAL/BMP/FIX/SCLEAR.CM_")) {
 		return 0;
 	}
 	if (!Graphics_LoadSpecialClearGrids()) {
@@ -1054,7 +1065,10 @@ static void DrawSprites(SDL_Surface *target, bool highPriority) {
 		if ((!!(sprite->reverse & 0x8000)) != highPriority) {
 			continue;
 		}
-		bitmap = &spriteBitmaps.at(sprite->index);
+		if (sprite->index >= spriteBitmaps.size()) {
+			continue;
+		}
+		bitmap = &spriteBitmaps[sprite->index];
 		surface = bitmap->surfaces[sprite->reverse & 3];
 		if (!surface) {
 			continue;

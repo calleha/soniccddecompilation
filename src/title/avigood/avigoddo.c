@@ -3,15 +3,15 @@
 #include "avigoden.h"
 
 #if defined(AVIBAD)
-static char *fileName[2] = {"TITLE\\BMP\\BADAVI\\MES1.BMP",
-                            "TITLE\\BMP\\GOODAVI\\MES2.BMP"};
+static char *fileName[2] = {"../TITLE/BMP/BADAVI/MES1.BMP",
+                            "../TITLE/BMP/GOODAVI/MES2.BMP"};
 static POINT bmpSize[2] = {{72, 16}, {160, 24}};
 static POINT bmpPosi[2] = {{124, 168}, {80, 100}};
 #endif
 
 #if defined(AVIGOOD)
-static char *fileName[2] = {"TITLE\\BMP\\GOODAVI\\MES1.BMP",
-                            "TITLE\\BMP\\GOODAVI\\MES2.BMP"};
+static char *fileName[2] = {"../TITLE/BMP/GOODAVI/MES1.BMP",
+                            "../TITLE/BMP/GOODAVI/MES2.BMP"};
 static POINT bmpSize[2] = {{128, 16}, {160, 24}};
 static POINT bmpPosi[2] = {{96, 168}, {80, 100}};
 #endif
