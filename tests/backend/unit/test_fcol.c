@@ -511,6 +511,15 @@ static void test_scramapad_positive_and_negative_stage_rules(
     mapwka[0][0] = 2;
     TEST_ASSERT_EQ_INT(ctx, 0x1234, scramapad(&actor, -1, -1));
 
+    /* R8 (Metallic Madness): above the top of the level is empty space, as on
+       Mega-CD, so the player can run along the level's top. */
+    reset_fcol_state();
+    setup_actor(&actor);
+    stageno.b.h = 6;
+    fill_block(2, 0x1234);
+    mapwka[0][0] = 2;
+    TEST_ASSERT_EQ_INT(ctx, 0, scramapad(&actor, 1, -1));
+
     reset_fcol_state();
     setup_actor(&actor);
     actor.sproffset = 0xFFFF;

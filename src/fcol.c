@@ -570,8 +570,18 @@ Sint16 scramapad(sprite_status *pActwk, Sint16 iXposi, Sint16 iYposi) {
 
     if (stageno.w == 0 || stageno.b.h == 6) {
 
-        if (iYposi < 0)
+        if (iYposi < 0) {
+            /* Above the top of the level. The original indexed mapwka with a
+               row of -1, which landed in the all-zero mapwkb buffer that sits
+               directly before it - i.e. "nothing here", which is how the
+               Mega-CD version lets Sonic fly above the level top in Metallic
+               Madness (R8) and run along the top of that structure. Clamping y
+               to 0 instead samples the stage's top band, whose block map is
+               full of geometry, so the player is blocked horizontally there. */
+            if (stageno.b.h == 6)
+                return 0;
             iYposi = 0;
+        }
         if (iXposi < 0)
             iXposi = 0;
     }
