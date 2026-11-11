@@ -2,6 +2,7 @@
 
 #include "support/test_runner.h"
 #include "src/types.h"
+#include "src/spring.h"
 
 sprite_status actwk[128];
 Sint16 time_stop;
@@ -222,9 +223,9 @@ static void test_dodai_init_sets_shape_and_spawns_child(test_context *ctx) {
     TEST_ASSERT_EQ_INT(ctx, 108, child->xposi.w.h);
     TEST_ASSERT_EQ_INT(ctx, 184, child->yposi.w.h);
     TEST_ASSERT_EQ_INT(ctx, 2, child->userflag.b.h);
-    TEST_ASSERT_EQ_INT(ctx, 8, dai_rd1_get_work(child)->vfuta_x_offset);
-    TEST_ASSERT_EQ_INT(ctx, -16, dai_rd1_get_work(child)->vfuta_y_offset);
-    TEST_ASSERT_EQ_INT(ctx, 2, dai_rd1_get_work(child)->parent_index);
+    TEST_ASSERT_EQ_INT(ctx, 8, spring_work_get(child)->follow_x_offset);
+    TEST_ASSERT_EQ_INT(ctx, -16, spring_work_get(child)->follow_y_offset);
+    TEST_ASSERT_EQ_INT(ctx, 2, spring_work_get(child)->parent_index);
     TEST_ASSERT_EQ_INT(ctx, 1, actionsub_count);
     TEST_ASSERT_TRUE(ctx, actionsub_actor == platform);
 }

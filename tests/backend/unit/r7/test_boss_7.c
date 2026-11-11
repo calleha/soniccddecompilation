@@ -1,3 +1,10 @@
+/* <stdlib.h> declares POSIX random(); the decompiled src/io.h declares the
+   game's own Sint32 random(void). Parse stdlib first, then rename the game
+   symbol inside this harness so the two can coexist. */
+#include <stdlib.h>
+
+#define random game_random
+
 #include <string.h>
 
 #include "support/test_runner.h"
@@ -907,7 +914,17 @@ static void test_boss7_msnc_demo2_transition_helpers(test_context *ctx) {
     TEST_ASSERT_EQ_INT(ctx, 1, boss7_get_work(actor)->step);
     TEST_ASSERT_EQ_INT(ctx, 60, boss7_get_work(actor)->timer);
     TEST_ASSERT_EQ_INT(ctx, 1, sub_sync_count);
-    TEST_ASSERT_EQ_INT(ctx, 31, sub_sync_values[0]);
+    /* The race always uses the bad future track (request 32). */
+    TEST_ASSERT_EQ_INT(ctx, 32, sub_sync_values[0]);
+
+    reset_boss7_state();
+    pEggman = &actwk[5];
+    generate_flag = 0;
+
+    door_open(actor);
+
+    TEST_ASSERT_EQ_INT(ctx, 1, sub_sync_count);
+    TEST_ASSERT_EQ_INT(ctx, 32, sub_sync_values[0]);
 
     reset_boss7_state();
     boss7_get_work(actor)->step = 7;

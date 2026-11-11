@@ -2,6 +2,7 @@
 
 #include "support/test_runner.h"
 #include "types.h"
+#include "spring.h"
 
 sprite_status actwk[128];
 int_union scra_h_posit;
@@ -558,6 +559,24 @@ static void test_spring_wrapper_attached_and_frameout_paths(test_context *ctx) {
     TEST_ASSERT_EQ_INT(ctx, 3, actionsub_count);
 }
 
+static void test_spring_attached_offsets_position_child(test_context *ctx) {
+    spring_work *work;
+
+    /* Mirrors what trapdr3_init/frdr3_init set up for their spring child:
+       parent_index plus follow offsets, which spring() applies to the parent. */
+    reset_spring_state();
+    actwk[5].xposi.w.h = 400;
+    actwk[5].yposi.w.h = 100;
+    work = spring_work_get(&actwk[6]);
+    work->parent_index = 5;
+    work->follow_x_offset = 24;
+    work->follow_y_offset = -22;
+    spring(&actwk[6]);
+    TEST_ASSERT_EQ_INT(ctx, 424, actwk[6].xposi.w.h);
+    TEST_ASSERT_EQ_INT(ctx, 78, actwk[6].yposi.w.h);
+    TEST_ASSERT_EQ_INT(ctx, 0, frameout_count);
+}
+
 TEST_MAIN_BEGIN;
     test_spring_tables_capture_literal_data(&ctx);
     test_iwa_init_move_and_wrapper(&ctx);
@@ -570,4 +589,5 @@ TEST_MAIN_BEGIN;
     test_sjump2_upward_activation_and_reset(&ctx);
     test_sjump3_diagonal_activation_branches(&ctx);
     test_spring_wrapper_attached_and_frameout_paths(&ctx);
+    test_spring_attached_offsets_position_child(&ctx);
 TEST_MAIN_END

@@ -193,7 +193,7 @@ static void test_read_block_map_success_reads_and_reports_path(
     TEST_ASSERT_EQ_INT(ctx, 0, memset_values[0]);
     TEST_ASSERT_EQ_INT(ctx, sizeof(blockwk), memset_sizes[0]);
     TEST_ASSERT_EQ_INT(ctx, 1, open_count);
-    TEST_ASSERT_TRUE(ctx, strcmp("R1\\11B\\T11B.MAP", open_paths[0]) == 0);
+    TEST_ASSERT_TRUE(ctx, strcmp("../R1/11B/T11B.MAP", open_paths[0]) == 0);
     TEST_ASSERT_EQ_INT(ctx, 1, read_count);
     TEST_ASSERT_EQ_INT(ctx, 42, read_handles[0]);
     TEST_ASSERT_TRUE(ctx, read_ptrs[0] == blockwk);
@@ -201,7 +201,7 @@ static void test_read_block_map_success_reads_and_reports_path(
     TEST_ASSERT_EQ_INT(ctx, 1, close_count);
     TEST_ASSERT_EQ_INT(ctx, 42, close_handles[0]);
     TEST_ASSERT_EQ_INT(ctx, 1, debug_count);
-    TEST_ASSERT_TRUE(ctx, strcmp("Block Map Read:R1\\11B\\T11B.MAP\n",
+    TEST_ASSERT_TRUE(ctx, strcmp("Block Map Read:../R1/11B/T11B.MAP\n",
                                  debug_messages[0]) == 0);
     TEST_ASSERT_EQ_INT(ctx, 0x5A5A, blockwk[0][0]);
     TEST_ASSERT_EQ_INT(ctx, 0x5A5A, blockwk[1023][3]);
@@ -217,11 +217,11 @@ static void test_read_block_map_reports_open_failure(test_context *ctx) {
 
     TEST_ASSERT_EQ_INT(ctx, 1, memset_count);
     TEST_ASSERT_EQ_INT(ctx, 1, open_count);
-    TEST_ASSERT_TRUE(ctx, strcmp("R3\\33A\\T33A.MAP", open_paths[0]) == 0);
+    TEST_ASSERT_TRUE(ctx, strcmp("../R3/33A/T33A.MAP", open_paths[0]) == 0);
     TEST_ASSERT_EQ_INT(ctx, 0, read_count);
     TEST_ASSERT_EQ_INT(ctx, 0, close_count);
     TEST_ASSERT_EQ_INT(ctx, 1, debug_count);
-    TEST_ASSERT_TRUE(ctx, strcmp("Block Map Read Error:R3\\33A\\T33A.MAP\n",
+    TEST_ASSERT_TRUE(ctx, strcmp("Block Map Read Error:../R3/33A/T33A.MAP\n",
                                  debug_messages[0]) == 0);
 }
 
@@ -242,7 +242,7 @@ static void test_read_scroll_map_success_reads_until_failure(
     TEST_ASSERT_TRUE(ctx, memset_ptrs[127] == pmapwk);
     TEST_ASSERT_EQ_INT(ctx, 512, memset_sizes[0]);
     TEST_ASSERT_EQ_INT(ctx, 1, open_count);
-    TEST_ASSERT_TRUE(ctx, strcmp("R4\\44C\\MAP44C.BIN", open_paths[0]) == 0);
+    TEST_ASSERT_TRUE(ctx, strcmp("../R4/44C/MAP44C.BIN", open_paths[0]) == 0);
     TEST_ASSERT_EQ_INT(ctx, 4, read_count);
     TEST_ASSERT_EQ_INT(ctx, 9, read_handles[0]);
     TEST_ASSERT_TRUE(ctx, read_ptrs[0] == &scroll_map_storage[0]);
@@ -253,7 +253,7 @@ static void test_read_scroll_map_success_reads_until_failure(
     TEST_ASSERT_EQ_INT(ctx, 1, close_count);
     TEST_ASSERT_EQ_INT(ctx, 9, close_handles[0]);
     TEST_ASSERT_EQ_INT(ctx, 1, debug_count);
-    TEST_ASSERT_TRUE(ctx, strcmp("Scroll Map Read:R4\\44C\\MAP44C.BIN\n",
+    TEST_ASSERT_TRUE(ctx, strcmp("Scroll Map Read:../R4/44C/MAP44C.BIN\n",
                                  debug_messages[0]) == 0);
 }
 
@@ -273,11 +273,11 @@ static void test_read_scroll_map_reports_open_failure(test_context *ctx) {
     TEST_ASSERT_EQ_INT(ctx, 0, scroll_map_storage[0]);
     TEST_ASSERT_EQ_INT(ctx, 0xAAAA, scroll_map_storage[256]);
     TEST_ASSERT_EQ_INT(ctx, 1, open_count);
-    TEST_ASSERT_TRUE(ctx, strcmp("R1\\11B\\MAP11B.BIN", open_paths[0]) == 0);
+    TEST_ASSERT_TRUE(ctx, strcmp("../R1/11B/MAP11B.BIN", open_paths[0]) == 0);
     TEST_ASSERT_EQ_INT(ctx, 0, read_count);
     TEST_ASSERT_EQ_INT(ctx, 0, close_count);
     TEST_ASSERT_EQ_INT(ctx, 1, debug_count);
-    TEST_ASSERT_TRUE(ctx, strcmp("Scroll Map Read Error:R1\\11B\\MAP11B.BIN\n",
+    TEST_ASSERT_TRUE(ctx, strcmp("Scroll Map Read Error:../R1/11B/MAP11B.BIN\n",
                                  debug_messages[0]) == 0);
 }
 

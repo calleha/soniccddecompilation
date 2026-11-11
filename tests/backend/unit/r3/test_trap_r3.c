@@ -3,6 +3,7 @@
 
 #include "support/test_runner.h"
 #include "src/types.h"
+#include "src/spring.h"
 
 sprite_status actwk[128];
 Uint8 flagwork[766];
@@ -316,7 +317,7 @@ static void test_frdr3_spawns_linked_actor_and_moves(test_context *ctx) {
     TEST_ASSERT_EQ_INT(ctx, 10, child->actno);
     TEST_ASSERT_EQ_INT(ctx, 400, child->xposi.w.h);
     TEST_ASSERT_EQ_INT(ctx, 96, child->yposi.w.h);
-    TEST_ASSERT_EQ_INT(ctx, 234, trap3_get_work(child)->phase);
+    TEST_ASSERT_EQ_INT(ctx, -22, spring_work_get(child)->follow_y_offset);
     TEST_ASSERT_EQ_INT(ctx, 3, trap3_get_work(child)->linked_actor_index);
     TEST_ASSERT_EQ_INT(ctx, 1, actwkchk2_count);
 
@@ -373,7 +374,7 @@ static void test_trapdr3_children_and_vertical_response(test_context *ctx) {
     floor->userflag.b.h = 2;
     trapdr3_init(floor);
     TEST_ASSERT_EQ_INT(ctx, 10, actwk[10].actno);
-    TEST_ASSERT_EQ_INT(ctx, 24, trap3_get_work(&actwk[10])->wait_timer);
+    TEST_ASSERT_EQ_INT(ctx, 24, spring_work_get(&actwk[10])->follow_x_offset);
     TEST_ASSERT_EQ_INT(ctx, 4, actwk[10].userflag.b.h);
 
     reset_state();

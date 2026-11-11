@@ -2,6 +2,7 @@
 
 #include "support/test_runner.h"
 #include "src/types.h"
+#include "src/spring_work.h"
 
 sprite_status actwk[128];
 Uint8 plpower_m;
@@ -172,6 +173,10 @@ static void test_togedair8_initializes_platform_and_child(test_context *ctx) {
     TEST_ASSERT_TRUE(ctx, frameout_s00_actor == platform);
     TEST_ASSERT_EQ_INT(ctx, 320, frameout_s00_xpos);
     TEST_ASSERT_EQ_INT(ctx, 0, hitchk_count);
+    /* The spawned child is a spring: it must be configured in spring_work. */
+    TEST_ASSERT_EQ_INT(ctx, 10, child->actno);
+    TEST_ASSERT_EQ_INT(ctx, -24, spring_work_get(child)->follow_y_offset);
+    TEST_ASSERT_EQ_INT(ctx, 2, spring_work_get(child)->parent_index);
 }
 
 static void test_togedair8_userflag_one_spawns_harir8_child(test_context *ctx) {

@@ -2,6 +2,7 @@
 
 #include "support/test_runner.h"
 #include "src/types.h"
+#include "src/r8/tobira_work.h"
 
 sprite_status actwk[128];
 short_union gametimer;
@@ -696,7 +697,7 @@ static void test_hota8c_room_controller_visible_paths(test_context *ctx) {
 
     hotaru8(room);
 
-    TEST_ASSERT_EQ_INT(ctx, 255, hota8c_work_get(door)->beam_accumulator);
+    TEST_ASSERT_EQ_INT(ctx, 255, tobira8_get_work(door)->trigger_open);
     TEST_ASSERT_EQ_INT(ctx, 1, actwkchk_count);
     TEST_ASSERT_EQ_INT(ctx, 63, eggman->actno);
     TEST_ASSERT_EQ_INT(ctx, 3840, eggman->xposi.w.h);
@@ -798,11 +799,11 @@ static void test_hota8c_room_controller_allocation_and_wait_edges(
     room->userflag.b.h = -2;
     room->r_no0 = 12;
     hota8c_work_get(room)->timer = 16;
-    hota8c_work_get(door)->beam_accumulator = 0;
+    tobira8_get_work(&actwk[0])->trigger_open = 0;
 
     hotaru8(room);
 
-    TEST_ASSERT_EQ_INT(ctx, 255, hota8c_work_get(&actwk[0])->beam_accumulator);
+    TEST_ASSERT_EQ_INT(ctx, 255, tobira8_get_work(&actwk[0])->trigger_open);
     TEST_ASSERT_EQ_INT(ctx, 1, actwkchk_count);
     TEST_ASSERT_EQ_INT(ctx, 0, frameout_count);
     TEST_ASSERT_EQ_INT(ctx, 0, room->actno);

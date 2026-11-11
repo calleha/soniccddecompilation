@@ -2,6 +2,7 @@
 
 #include "support/test_runner.h"
 #include "src/types.h"
+#include "src/spring_work.h"
 
 sprite_status actwk[128];
 
@@ -219,6 +220,10 @@ static void test_koma8_initializes_main_actor_and_spawned_spark(
 
     TEST_ASSERT_EQ_INT(ctx, 1, actwkchk2_count);
     TEST_ASSERT_TRUE(ctx, actwkchk2_actor == actor);
+    /* The spawned child is a spring: it must be configured in spring_work. */
+    TEST_ASSERT_EQ_INT(ctx, 10, spark->actno);
+    TEST_ASSERT_EQ_INT(ctx, -16, spring_work_get(spark)->follow_y_offset);
+    TEST_ASSERT_EQ_INT(ctx, 3, spring_work_get(spark)->parent_index);
     assert_frameout_s00_called(ctx, actor, 100);
 }
 
