@@ -1,22 +1,10 @@
 #include "../equ.h"
 #include "tobira.h"
+#include "tobira_work.h"
 #include "../action.h"
 #include "../actset.h"
 #include "../playsub.h"
 #include "../ridechk.h"
-
-typedef struct {
-    Uint16 parent_index;
-    Uint16 slave_index;
-    Sint16 base_y;
-    Sint16 closed_y;
-    Sint16 open_y;
-    Uint8 trigger_open;
-} tobira8_work;
-
-static tobira8_work *tobira8_get_work(sprite_status *actionwk) {
-    return (tobira8_work *)actionwk->actfree;
-}
 
 #if defined(R82)
 #define SPRITE_TOBIRA_BASE 432

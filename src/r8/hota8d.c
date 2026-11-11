@@ -4,6 +4,7 @@
 #include "../actset.h"
 #include "../dircol.h"
 #include "../playsub.h"
+#include "tobira_work.h"
 
 typedef struct {
     Uint8 phase_flags;
@@ -435,7 +436,8 @@ static void ht8main_move6(sprite_status *roomwk) {
     hota8d_work *work = hota8d_work_get(roomwk);
 
     colchg2(0);
-    hota8d_work_get(&actwk[work->door_actor_index])->beam_accumulator = 255;
+    /* Unlock the door: it consumes trigger_open from its own work area. */
+    tobira8_get_work(&actwk[work->door_actor_index])->trigger_open = 255;
     if (actwkchk(&eggwk) != 0)
         return;
     eggwk->actno = 63;
