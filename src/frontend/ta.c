@@ -22,7 +22,7 @@ int TimeAttack_Load(Sint32 newSession) {
         ReadScoreData(scoreIndex, &scoreData, 0);
     }
 
-    if (!DLL_Load("build/bin/Debug/ta.dll")) {
+    if (!DLL_Load("bin/libta.so")) {
         SDL_Log("Couldn't load time attack DLL");
         return 0;
     }
@@ -65,7 +65,7 @@ frontend_state TimeAttack_Run(SDL_Renderer *renderer) {
     TimeAttack_Unload();
     if (gameResult == -1) {
         gameInfo.ta_flag = 0;
-        if (!Title_LoadDLL("build/bin/Debug/opening.dll")) {
+        if (!Title_LoadDLL("bin/libopening.so")) {
             return FRONTEND_STATE_EXIT;
         }
         return FRONTEND_STATE_TITLE;

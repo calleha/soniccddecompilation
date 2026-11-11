@@ -1977,9 +1977,9 @@ void playrunchg(Uint8 pat_no) {
     } else {
         direction >>= 4;
         direction &= 6;
-        if (cal_speed > 2560)
+        if (cal_speed >= 2560)
             pat_pointer = plchg49;
-        else if (cal_speed > 1536)
+        else if (cal_speed >= 1536)
             pat_pointer = plchg01;
         else {
             pat_pointer = plchg00;

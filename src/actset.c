@@ -92,6 +92,8 @@ void actset(void) {
             goto label1;
 
         while (1) {
+            if (pAsetadr_w <= asettbl)
+                goto label1;
             if ((Sint16)((pAsetadr_w - 1)->x) <= scra_h)
                 goto label1;
             --pAsetadr_w;
