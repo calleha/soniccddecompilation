@@ -7,6 +7,7 @@
 #include "../playsub.h"
 #include "../player_work.h"
 #include "../ridechk.h"
+#include "../spring.h"
 #include "coli3.h"
 
 typedef struct {
@@ -212,7 +213,8 @@ void frdr3_init(sprite_status *floorwk) {
     new_actwk->actno = 10;
     new_actwk->xposi.w.h = floorwk->xposi.w.h;
     new_actwk->yposi.w.h = floorwk->yposi.w.h;
-    trap3_get_work(new_actwk)->phase = 234;
+    /* The child is a spring (actno 10), so its work area is a spring_work. */
+    spring_work_get(new_actwk)->follow_y_offset = (Sint8)234;
     trap3_get_work(new_actwk)->linked_actor_index = floorwk - actwk;
     new_actwk->userflag.b.h = (floorwk->userflag.b.h & 1) << 1;
     frdr3_move(floorwk);
@@ -306,7 +308,8 @@ void trapdr3_init(sprite_status *floorwk) {
         trap3_get_work(new_actwk)->wait_timer = 32;
         new_actwk->userflag.b.h = 2;
     } else {
-        trap3_get_work(new_actwk)->wait_timer = 24;
+        /* This child is a spring (actno 10): put it on the block's right side. */
+        spring_work_get(new_actwk)->follow_x_offset = 24;
         new_actwk->userflag.b.h = (floorwk->userflag.b.h & 1) << 1 | 4;
     }
     trapdr3_move(floorwk);
