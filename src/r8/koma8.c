@@ -4,6 +4,7 @@
 #include "../actset.h"
 #include "../dircol.h"
 #include "../playsub.h"
+#include "../spring_work.h"
 
 #if defined(R82)
 #define SPRITE_KOMA8_BASE 313
@@ -19,17 +20,8 @@ typedef struct {
     Sint16 travel_range;
 } koma8_work;
 
-typedef struct {
-    Uint16 parent_index;
-    Uint8 timer;
-} koma8_spark_work;
-
 static koma8_work *koma8_get_work(sprite_status *komawk) {
     return (koma8_work *)komawk->actfree;
-}
-
-static koma8_spark_work *koma8_get_spark_work(sprite_status *sprwk) {
-    return (koma8_spark_work *)sprwk->actfree;
 }
 
 static void koma_init(sprite_status *komawk);
@@ -53,7 +45,6 @@ void koma8(sprite_status *komawk) {
 static void koma_init(sprite_status *komawk) {
     koma8_work *work = koma8_get_work(komawk);
     sprite_status *sprwk;
-    koma8_spark_work *spark;
 
     komawk->r_no0 += 2;
     komawk->actflg |= 4;
@@ -68,12 +59,12 @@ static void koma_init(sprite_status *komawk) {
         frameout(komawk);
         return;
     };
-    spark = koma8_get_spark_work(sprwk);
     sprwk->actno = 10;
     sprwk->xposi.w.h = komawk->xposi.w.h;
     sprwk->yposi.w.h = komawk->yposi.w.h - 16;
-    spark->timer = 240;
-    spark->parent_index = komawk - actwk;
+    /* The child is a spring (actno 10), so its work area is a spring_work. */
+    spring_work_get(sprwk)->follow_y_offset = (Sint8)240;
+    spring_work_get(sprwk)->parent_index = komawk - actwk;
     sprwk->userflag.b.h = komawk->userflag.b.h & 15;
 
     work->travel_range = 80;

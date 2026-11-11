@@ -7,6 +7,7 @@
 #include "etc.h"
 #include "loader2.h"
 #include "ridechk.h"
+#include "spring.h"
 
 typedef struct {
     Uint8 phase;
@@ -132,13 +133,14 @@ static void dodai_init(sprite_status *pActwk) {
             pNewact->actno = 10;
             pNewact->xposi.w.h = pActwk->xposi.w.h;
             pNewact->yposi.w.h = pActwk->yposi.w.h - 16;
-            dai_rd1_get_work(pNewact)->vfuta_y_offset = -16;
-
-            dai_rd1_get_work(pNewact)->parent_index = pActwk - actwk;
+            /* The child is a spring (actno 10), so its work area is a
+               spring_work, not dai_rd1_work. */
+            spring_work_get(pNewact)->follow_y_offset = -16;
+            spring_work_get(pNewact)->parent_index = pActwk - actwk;
 
             pNewact->userflag.b.h = pActwk->userflag.b.l & 2;
             wk = (Uint8)pActwk->userflag.b.l & 248;
-            dai_rd1_get_work(pNewact)->vfuta_x_offset = wk;
+            spring_work_get(pNewact)->follow_x_offset = (Sint8)wk;
             pNewact->xposi.w.h += (Uint16)wk;
         }
     }

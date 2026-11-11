@@ -5,6 +5,7 @@
 #include "../loader2.h"
 #include "../player_work.h"
 #include "../ridechk.h"
+#include "../spring.h"
 #include "coli8.h"
 
 typedef struct {
@@ -73,8 +74,9 @@ static void dair8_init(sprite_status *trapwk) {
         new_actwk->actno = 10;
         new_actwk->xposi.w.h = trapwk->xposi.w.h;
         new_actwk->yposi.w.h = trapwk->yposi.w.h;
-        trap_r81_work_get(new_actwk)->follow_y_offset = 232;
-        trap_r81_work_get(new_actwk)->linked_actor_index = trapwk - actwk;
+        /* The child is a spring (actno 10), so its work area is a spring_work. */
+        spring_work_get(new_actwk)->follow_y_offset = (Sint8)232;
+        spring_work_get(new_actwk)->parent_index = trapwk - actwk;
         new_actwk->userflag.b.h = trapwk->userflag.b.h;
         dair8_move(trapwk);
     } else {

@@ -2,19 +2,7 @@
 #define SPRING_H
 
 #include "types.h"
-
-typedef struct {
-    Sint16 jump_speed;
-    Sint16 ground_y;
-    Uint16 parent_index;
-    Sint16 origin_x;
-    Sint8 follow_x_offset;
-    Sint8 follow_y_offset;
-} spring_work;
-
-static inline spring_work *spring_work_get(sprite_status *actionwk) {
-    return (spring_work *)actionwk->actfree;
-}
+#include "spring_work.h"
 
 void iwa(sprite_status *actionwk);
 void iwa_init(sprite_status *actionwk);
