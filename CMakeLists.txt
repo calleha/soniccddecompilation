@@ -4783,10 +4783,14 @@ endforeach()
 add_custom_target(variants DEPENDS ${SONICCD_SELECTED_TARGETS})
 
 add_executable(frontend
+  src/frontend/attract.c
+  src/frontend/attract.h
   src/frontend/main.c
   src/frontend/constants.h
   src/frontend/dll.c
   src/frontend/dll.h
+  src/frontend/ending.c
+  src/frontend/ending.h
   src/frontend/file.c
   src/frontend/file.h
   src/frontend/frontend_state.h
@@ -4796,6 +4800,8 @@ add_executable(frontend
   src/frontend/graphics.h
   src/frontend/hmx.cpp
   src/frontend/hmx.h
+  src/frontend/movie.c
+  src/frontend/movie.h
   src/frontend/round.c
   src/frontend/round.h
   src/frontend/score.c
@@ -4855,6 +4861,92 @@ if(MSVC)
 else()
   find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
   target_link_libraries(frontend PRIVATE SDL3::SDL3 SDL3_mixer::SDL3_mixer)
+endif()
+
+# ---------------- FFmpeg (optional, for the FMV cutscenes) ------------------
+# The opening movie and the endings are decoded with libav*. Discovery order:
+#   1. -DFFMPEG_ROOT=<prefix>           (explicit, e.g. a Guix/Nix store path)
+#   2. pkg-config libavformat ...
+#   3. derived from the `ffmpeg` on PATH (covers isolated profiles where
+#      pkg-config knows nothing but the binary does)
+# Without FFmpeg the player compiles to a no-op and the game runs unchanged.
+option(SONICCD_WITH_FFMPEG "Decode the FMV cutscenes with FFmpeg" ON)
+set(FFMPEG_ROOT "" CACHE PATH "FFmpeg prefix containing include/ and lib/")
+
+set(SONICCD_FFMPEG_INCLUDE_DIRS "")
+set(SONICCD_FFMPEG_LIBRARIES "")
+
+if(SONICCD_WITH_FFMPEG)
+  if(FFMPEG_ROOT)
+    find_path(SONICCD_FFMPEG_INCLUDE_DIR
+      NAMES libavformat/avformat.h
+      HINTS "${FFMPEG_ROOT}/include" NO_DEFAULT_PATH)
+    find_library(SONICCD_FFMPEG_AVFORMAT_LIB
+      NAMES avformat
+      HINTS "${FFMPEG_ROOT}/lib" "${FFMPEG_ROOT}/lib64" NO_DEFAULT_PATH)
+    if(SONICCD_FFMPEG_INCLUDE_DIR AND SONICCD_FFMPEG_AVFORMAT_LIB)
+      get_filename_component(_ffmpeg_libdir "${SONICCD_FFMPEG_AVFORMAT_LIB}" DIRECTORY)
+      find_library(SONICCD_FFMPEG_AVCODEC_LIB NAMES avcodec HINTS "${_ffmpeg_libdir}" NO_DEFAULT_PATH)
+      find_library(SONICCD_FFMPEG_SWSCALE_LIB NAMES swscale HINTS "${_ffmpeg_libdir}" NO_DEFAULT_PATH)
+      find_library(SONICCD_FFMPEG_SWRESAMPLE_LIB NAMES swresample HINTS "${_ffmpeg_libdir}" NO_DEFAULT_PATH)
+      find_library(SONICCD_FFMPEG_AVUTIL_LIB NAMES avutil HINTS "${_ffmpeg_libdir}" NO_DEFAULT_PATH)
+      set(SONICCD_FFMPEG_INCLUDE_DIRS "${SONICCD_FFMPEG_INCLUDE_DIR}")
+      set(SONICCD_FFMPEG_LIBRARIES
+        "${SONICCD_FFMPEG_AVFORMAT_LIB}" "${SONICCD_FFMPEG_AVCODEC_LIB}"
+        "${SONICCD_FFMPEG_SWSCALE_LIB}" "${SONICCD_FFMPEG_SWRESAMPLE_LIB}"
+        "${SONICCD_FFMPEG_AVUTIL_LIB}")
+    endif()
+  endif()
+
+  if(NOT SONICCD_FFMPEG_LIBRARIES)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+      pkg_check_modules(SONICCD_PC_FFMPEG QUIET
+        libavformat libavcodec libswscale libswresample libavutil)
+      if(SONICCD_PC_FFMPEG_FOUND)
+        set(SONICCD_FFMPEG_INCLUDE_DIRS ${SONICCD_PC_FFMPEG_INCLUDE_DIRS})
+        set(SONICCD_FFMPEG_LIBRARIES ${SONICCD_PC_FFMPEG_LIBRARIES})
+        target_link_directories(frontend PRIVATE ${SONICCD_PC_FFMPEG_LIBRARY_DIRS})
+      endif()
+    endif()
+  endif()
+
+  if(NOT SONICCD_FFMPEG_LIBRARIES)
+    find_program(SONICCD_FFMPEG_EXECUTABLE NAMES ffmpeg)
+    if(SONICCD_FFMPEG_EXECUTABLE)
+      get_filename_component(_ffmpeg_prefix "${SONICCD_FFMPEG_EXECUTABLE}" DIRECTORY)
+      get_filename_component(_ffmpeg_prefix "${_ffmpeg_prefix}" DIRECTORY)
+      find_path(SONICCD_FFMPEG_INCLUDE_DIR
+        NAMES libavformat/avformat.h
+        HINTS "${_ffmpeg_prefix}/include" NO_DEFAULT_PATH)
+      find_library(SONICCD_FFMPEG_AVFORMAT_LIB
+        NAMES avformat
+        HINTS "${_ffmpeg_prefix}/lib" "${_ffmpeg_prefix}/lib64" NO_DEFAULT_PATH)
+      if(SONICCD_FFMPEG_INCLUDE_DIR AND SONICCD_FFMPEG_AVFORMAT_LIB)
+        get_filename_component(_ffmpeg_libdir "${SONICCD_FFMPEG_AVFORMAT_LIB}" DIRECTORY)
+        find_library(SONICCD_FFMPEG_AVCODEC_LIB NAMES avcodec HINTS "${_ffmpeg_libdir}" NO_DEFAULT_PATH)
+        find_library(SONICCD_FFMPEG_SWSCALE_LIB NAMES swscale HINTS "${_ffmpeg_libdir}" NO_DEFAULT_PATH)
+        find_library(SONICCD_FFMPEG_SWRESAMPLE_LIB NAMES swresample HINTS "${_ffmpeg_libdir}" NO_DEFAULT_PATH)
+        find_library(SONICCD_FFMPEG_AVUTIL_LIB NAMES avutil HINTS "${_ffmpeg_libdir}" NO_DEFAULT_PATH)
+        set(SONICCD_FFMPEG_INCLUDE_DIRS "${SONICCD_FFMPEG_INCLUDE_DIR}")
+        set(SONICCD_FFMPEG_LIBRARIES
+          "${SONICCD_FFMPEG_AVFORMAT_LIB}" "${SONICCD_FFMPEG_AVCODEC_LIB}"
+          "${SONICCD_FFMPEG_SWSCALE_LIB}" "${SONICCD_FFMPEG_SWRESAMPLE_LIB}"
+          "${SONICCD_FFMPEG_AVUTIL_LIB}")
+      endif()
+    endif()
+  endif()
+endif()
+
+if(SONICCD_FFMPEG_LIBRARIES)
+  target_include_directories(frontend PRIVATE ${SONICCD_FFMPEG_INCLUDE_DIRS})
+  target_link_libraries(frontend PRIVATE ${SONICCD_FFMPEG_LIBRARIES})
+  target_compile_definitions(frontend PRIVATE SONICCD_HAVE_FFMPEG)
+  message(STATUS "FMV cutscenes: FFmpeg detected (${SONICCD_FFMPEG_LIBRARIES})")
+elseif(SONICCD_WITH_FFMPEG)
+  message(STATUS "FMV cutscenes: FFmpeg not found - the movies will be skipped")
+else()
+  message(STATUS "FMV cutscenes: disabled (SONICCD_WITH_FFMPEG=OFF)")
 endif()
 
 if(SONICCD_BUILD_TESTS)

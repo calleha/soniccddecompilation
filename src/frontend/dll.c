@@ -84,8 +84,31 @@ int DLL_LoadTitle(const char *path) {
 }
 
 void DLL_Unload(void) {
+    /* currentDll is either a game DLL or a title DLL.  A title DLL gets its
+       DLLEnd run while it is still mapped, and every function pointer is
+       cleared afterwards: attract mode switches between the two kinds, and
+       stale pointers into an unmapped module used to crash on the next call. */
+    if (Title_DLLEnd) {
+        Title_DLLEnd();
+    }
     if (currentDll) {
         SDL_UnloadObject(currentDll);
         currentDll = NULL;
     }
+
+    Title_DLLInit = NULL;
+    Title_DLLMain = NULL;
+    Title_DLLEnd = NULL;
+    game_init = NULL;
+    game = NULL;
+    DLL_meminit = NULL;
+    DLL_memfree = NULL;
+    SWdataSet = NULL;
+    Get_vscroll = NULL;
+    Get_scra_h_posiw = NULL;
+    Get_scrb_h_posiw = NULL;
+    FadeProc = NULL;
+    SetDebugFlag = NULL;
+    GetRoundStr = NULL;
+    Special_block_chg = NULL;
 }

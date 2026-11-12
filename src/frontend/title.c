@@ -1,4 +1,5 @@
 #include <SDL3/SDL.h>
+#include "attract.h"
 #include "dll.h"
 #include "graphics.h"
 #include "globals.h"
@@ -14,6 +15,7 @@ enum {
     TITLE_RESULT_CONTINUE = 2,
     TITLE_RESULT_TIME_ATTACK = 3,
     TITLE_RESULT_SAVE_DATA = 4,
+    TITLE_RESULT_ATTRACT = 7,
     TITLE_RESULT_OPENING = 9,
     TITLE_RESULT_EXIT = 21,
 };
@@ -142,6 +144,10 @@ static frontend_state LoadOpening(void) {
     return FRONTEND_STATE_TITLE;
 }
 
+/* Restarts the title sequence from the beginning - used after the attract mode
+   (opening movie / stage demos) is over. */
+frontend_state Title_Restart(void) { return LoadOpening(); }
+
 frontend_state Title_Run(void) {
     if (Title_DLLMain) {
         Sint32 gameResult = Title_DLLMain();
@@ -159,6 +165,9 @@ frontend_state Title_Run(void) {
             return LoadTimeAttack();
         case TITLE_RESULT_SAVE_DATA:
             return LoadSaveManager();
+        case TITLE_RESULT_ATTRACT:
+            Attract_Begin();
+            return FRONTEND_STATE_ATTRACT;
         case TITLE_RESULT_OPENING:
             return LoadOpening();
         case TITLE_RESULT_EXIT:
@@ -173,8 +182,6 @@ frontend_state Title_Run(void) {
 }
 
 void Title_Unload(void) {
-    if (Title_DLLEnd) {
-        Title_DLLEnd();
-    }
+    /* DLL_Unload() runs the title DLL's DLLEnd while it is still mapped. */
     DLL_Unload();
 }

@@ -3,12 +3,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "attract.h"
 #include "dll.h"
+#include "ending.h"
 #include "file.h"
 #include "frontend_state.h"
 #include "globals.h"
 #include "graphics.h"
 #include "hmx.h"
+#include "movie.h"
 #include "round.h"
 #include "score.h"
 #include "sound.h"
@@ -106,6 +109,43 @@ int main(int argc, char **argv) {
         if (!TimeAttack_Load(1)) {
             return -1;
         }
+    } else if (argc > 1 && strcmp(argv[1], "attract") == 0) {
+        /* Starting point of the attract rotation: 0 opening movie, 1..5 the
+           stage demos in the reference's order.  The opening DLL provides the
+           pad bridge (SWdataSet) the main loop needs; a demo entry replaces it
+           with its own stage DLL. */
+        if (!Title_LoadDLL("bin/libopening.so")) {
+            return -1;
+        }
+        state = FRONTEND_STATE_ATTRACT;
+        if (argc > 2) {
+            char *end = NULL;
+            unsigned long entry = strtoul(argv[2], &end, 10);
+            if (!end || *end != '\0') {
+                return -1;
+            }
+            Attract_Select((int)entry);
+        }
+        Attract_Begin();
+    } else if (argc > 1 && strcmp(argv[1], "ending") == 0) {
+        /* Plays the ending directly: `ending good` or `ending bad` forces the
+           save condition, with no argument the current save decides.  The
+           opening DLL provides the pad bridge the main loop needs. */
+        if (!Title_LoadDLL("bin/libopening.so")) {
+            return -1;
+        }
+        if (argc > 2) {
+            if (strcmp(argv[2], "good") == 0) {
+                gameInfo.clrspflg_save = 127;
+            } else if (strcmp(argv[2], "bad") == 0) {
+                gameInfo.clrspflg_save = 0;
+                scoreData.clrgood = 0;
+            } else {
+                return -1;
+            }
+        }
+        Ending_Begin();
+        state = FRONTEND_STATE_ENDING;
     } else {
         if (!Title_LoadDLL("bin/libopening.so")) {
             return -1;
@@ -131,15 +171,25 @@ int main(int argc, char **argv) {
         if (keys[SDL_SCANCODE_K]) { pressed |= 0x20; }
         if (keys[SDL_SCANCODE_L]) { pressed |= 0x40; }
         if (keys[SDL_SCANCODE_RETURN]) { pressed |= 0x80; }
-        Uint8 lastPressed = joy1.b.h;
+        /* The live pad edges are tracked separately from joy1, because a
+           running stage demo replaces joy1 with its recording. */
+        static Uint8 lastRealPressed;
+        Uint8 newlyPressed = (Uint8)(~lastRealPressed & pressed);
+        lastRealPressed = pressed;
         Uint32 lastPadOn = padStatus.On;
         joy1.b.h = pressed;
-        joy1.b.l = (~lastPressed) & pressed;
+        joy1.b.l = newlyPressed;
         padStatus.On = 0;
         if (keys[SDL_SCANCODE_J]) { padStatus.On |= 0x02; }
         if (keys[SDL_SCANCODE_K]) { padStatus.On |= 0x04; }
         padStatus.Press = (~lastPadOn) & padStatus.On;
         padStatus.Release = lastPadOn & ~padStatus.On;
+        /* A running stage demo feeds its recorded pad instead of the live one. */
+        Attract_OverridePad(&joy1, &joy2);
+        /* A running movie is advanced here rather than from the state that
+           started it, so the player keeps going no matter which DLL is on the
+           screen polling Movie_Stat(). */
+        Movie_Update(renderer);
         SWdataSet(joy1, joy2);
 
         switch (state) {
@@ -154,6 +204,12 @@ int main(int argc, char **argv) {
             break;
         case FRONTEND_STATE_SPECIAL:
             state = Special_Run(renderer);
+            break;
+        case FRONTEND_STATE_ATTRACT:
+            state = Attract_Run(renderer, pressed);
+            break;
+        case FRONTEND_STATE_ENDING:
+            state = Ending_Run(pressed);
             break;
         case FRONTEND_STATE_TIME_ATTACK:
             state = TimeAttack_Run(renderer);
@@ -180,7 +236,14 @@ int main(int argc, char **argv) {
         TimeAttack_Unload();
     } else if (state == FRONTEND_STATE_TITLE) {
         Title_Unload();
+    } else if (state == FRONTEND_STATE_ATTRACT) {
+        Movie_Shutdown();
+        Title_Unload();
+    } else if (state == FRONTEND_STATE_ENDING) {
+        Movie_Shutdown();
+        Title_Unload();
     }
+    Movie_Shutdown();
     Graphics_Shutdown();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "dll.h"
+#include "ending.h"
 #include "globals.h"
 #include "graphics.h"
 #include "round.h"
@@ -29,6 +30,10 @@ static const Uint16 tileChangeMask[8] = {
 };
 
 static int stageIdInitialized;
+
+/* Whether the stage that is loaded ran in a good future - the reference's
+   DAT_0042570c, set from the "?3C" stage id when a stage is loaded. */
+static int roundStageIsGoodFuture;
 
 static void Round_ReadStageString(char *str, size_t strSize) {
     Uint8 round;
@@ -231,7 +236,15 @@ static int Round_LoadGraphics(void) {
 }
 
 static int Round_LoadStagePath(const char *path) {
+    char stageId[ROUND_STAGE_ID_LEN + 1];
+
     memset(hscrollbuff, 0, sizeof(hscrollbuff));
+
+    /* The reference notes the good future here, before the DLL is loaded, and
+       uses it when the next zone's act 1 starts. */
+    stageId[0] = '\0';
+    Round_ReadStageString(stageId, sizeof(stageId));
+    roundStageIsGoodFuture = (stageId[1] == '3' && stageId[2] == 'C');
 
     if (!DLL_Load(path)) {
         SDL_Log("Couldn't load round DLL: %s", path);
@@ -293,19 +306,32 @@ int Round_LoadStageByName(const char *stageId) {
 }
 
 static frontend_state Round_LoadNextStage(void) {
+    /* WINEXE/WINMAIN.C credits a zone's good future when the next zone's act 1
+       starts, if the act 3 that was just played ran in a good future (the
+       reference keeps this in DAT_0042570c, set from the "?3C" stage id at
+       load time).  clrgood is what decides the good ending later. */
     if (gameInfo.stageno.b.l == 0) {
+        if (roundStageIsGoodFuture && gameInfo.stageno.b.h >= 1 &&
+            gameInfo.stageno.b.h <= 7) {
+            scoreData.clrgood |= (Uint8)(1 << (gameInfo.stageno.b.h - 1));
+        }
         scoreData.roundNo = gameInfo.stageno.b.h;
         SetScoreDate(&scoreData);
     }
 
     if (gameInfo.stageno.w == 0x0700) {
+        /* Last act of R8 cleared: the game is over, save the record and play
+           the ending movie (the reference's gEndingMovieFlag path).  The
+           opening DLL is loaded first because the main loop feeds the pad
+           through the loaded module while the movie runs. */
         Round_Unload();
         scoreData.roundNo = 7;
         WriteScoreData(ReadScoreIndx(0), &scoreData, 0);
         if (!Title_LoadDLL("bin/libopening.so")) {
             return FRONTEND_STATE_EXIT;
         }
-        return FRONTEND_STATE_TITLE;
+        Ending_Begin();
+        return FRONTEND_STATE_ENDING;
     }
 
     WriteScoreData(ReadScoreIndx(0), &scoreData, 0);

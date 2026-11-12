@@ -2,6 +2,7 @@
 #include "globals.h"
 #include "graphics.h"
 #include "hmx.h"
+#include "movie.h"
 #include "score.h"
 #include "sound.h"
 #include "utilities.h"
@@ -93,6 +94,12 @@ void *functionTbl[64] = {
     (void *)hmx_ddagrid_release,
     (void *)hmx_ddagrid_set_scan,
     (void *)hmx_ddagrid_set_tile,
+    /* The movie DLLs (TITLE/AVIOPEN, TITLE/AVIGOOD) skip one slot and then take
+       the three movie hooks, so the order here is part of the ABI. */
+    0,
+    (void *)Movie_Play,
+    (void *)Movie_Stop,
+    (void *)Movie_Stat,
 };
 
 void Globals_Init(SDL_Window *w, SDL_Renderer *r) {

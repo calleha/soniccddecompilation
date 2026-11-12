@@ -67,8 +67,18 @@ sprite_pattern *pat_friend0[3] = {&spr_friend4_00, &spr_friend4_01,
                                   &spr_friend4_99};
 sprite_pattern *pat_friend1[3] = {&spr_friend4_10, &spr_friend4_11,
                                   &spr_friend4_99};
-static Uint16 tbl0sproffset[11] = {1104, 1104, 1104, 0, 1104, 1104,
-                                   1104, 0,    0,    0, 1104};
+/* The lookup in m_init() builds the index as 2 * (4 * stageno.b.l +
+   time_flag), so in 43C it asks for entry 20 of a table the original binary
+   only fills up to entry 10.  There the read runs into the words that follow
+   the table - all zero apart from a 1 at entry 16, plus 0xF8F8 and 0x1ED at
+   the odd entries 17 and 19 that the formula never produces - and here it
+   would read whatever this build happens to place next, which
+   AddressSanitizer rejects as a global-buffer-overflow.  The array keeps the
+   original's values for every index the formula can reach. */
+static Uint16 tbl0sproffset[32] = {
+    1104, 1104, 1104, 0,    1104, 1104, 1104, 0,    0,    0,    1104,
+    0,    0,    0,    0,    0,    1,    0xF8F8, 0,   0x1ED, 0,   0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0};
 
 void friend4(sprite_status *pActwk) {
     if (!friend_suicide(pActwk)) {

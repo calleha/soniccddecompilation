@@ -1,3 +1,10 @@
+/* <stdlib.h> declares POSIX random(); the decompiled src/io.h declares the
+   game's own Sint32 random(void). Parse stdlib first, then rename the game
+   symbol inside this harness so the two can coexist. */
+#include <stdlib.h>
+
+#define random game_random
+
 #include <string.h>
 
 #include "support/test_runner.h"

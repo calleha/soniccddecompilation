@@ -11,6 +11,7 @@
 #include "file.h"
 #include "graphics.h"
 #include "hmx.h"
+#include "movie.h"
 #include "szdd.hpp"
 
 Uint16 mapwk[32768];
@@ -1375,6 +1376,11 @@ static void DrawPlanetRotateGrid(SDL_Surface *target, const game_info *info) {
 }
 
 static void PresentFrame(SDL_Renderer *renderer) {
+	/* While a movie plays it owns the screen; the game still runs and draws
+	   into the framebuffer, but presenting it would stomp the movie frame. */
+	if (Movie_IsPlaying()) {
+		return;
+	}
 	SDL_BlitSurface(framebuffer, NULL, presentSurface, NULL);
 	Uint32 *srcPixels = (Uint32 *)presentSurface->pixels;
 	Uint32 *dstPixels;
@@ -1451,7 +1457,8 @@ void Graphics_DrawSpecial(SDL_Renderer *renderer, const game_info *info) {
 	}
 	DrawSprites(framebuffer, false);
 	DrawSprites(framebuffer, true);
-	PresentFrame(renderer);
-	PresentFrame(renderer);
+	/* One present per frame: SDL_RenderPresent waits for vblank, so presenting
+	   the finished frame three times ran the whole special stage at 20 fps and
+	   made its attract demo crawl through its recorded input. */
 	PresentFrame(renderer);
 }
