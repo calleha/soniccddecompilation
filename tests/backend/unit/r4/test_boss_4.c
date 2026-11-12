@@ -258,7 +258,9 @@ static void test_egg4air_path_helpers_cover_table_edges(test_context *ctx) {
     boss4_get_work(&actwk[20])->gate1_index = 21;
     egg4air_01_next(actor, &step);
     TEST_ASSERT_EQ_INT(ctx, 128, actor->r_no1);
-    TEST_ASSERT_EQ_INT(ctx, 1, boss4_get_work(&actwk[21])->gate_signal);
+    /* The gate is a wall4 actor, so the signal has to land in its own work
+       area - that is what wall4_wait() reads to drop the gate. */
+    TEST_ASSERT_EQ_INT(ctx, 1, wall4_get_work(&actwk[21])->triggered);
 
     reset_boss4_state();
     step.E4A_ETC = 2;
@@ -266,7 +268,7 @@ static void test_egg4air_path_helpers_cover_table_edges(test_context *ctx) {
     boss4_get_work(&actwk[20])->gate2_index = 22;
     egg4air_01_next(actor, &step);
     TEST_ASSERT_EQ_INT(ctx, 64, actor->r_no1);
-    TEST_ASSERT_EQ_INT(ctx, 1, boss4_get_work(&actwk[22])->gate_signal);
+    TEST_ASSERT_EQ_INT(ctx, 1, wall4_get_work(&actwk[22])->triggered);
 
     reset_boss4_state();
     step.E4A_ETC = 3;

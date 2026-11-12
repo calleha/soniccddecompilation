@@ -1693,3 +1693,27 @@ tests.
 - Source is intentionally left unchanged for the characterization pass.
 - Related source locations: `src/r7/scr72d.c`, lines 817-826; and
   `src/r7/scr73d.c`, lines 816-825.
+
+## R3 act 1 (R31A/R31D): foreground tiles drawn in the wrong layer
+
+- Reported from gameplay with screenshots: a foreground tile is missing (the
+  background shows through) in `R31A` and `R31D`.
+- Ruled out so far:
+  - the tile sets are complete: `TCMP31A.CM_` (698 entries) and `TCMP31D.CM_`
+    (704) parse to exactly their data length and only tile 0 is blank, so no
+    tile is missing from the file;
+  - `Round_UsesTileChange()` correctly decides that R3 act 1 has no tile change
+    set (the mask `0x0B00` only covers stages 4, 6 and 7 - act 2), and the data
+    agrees: `TCHG` exists for 32A/32C/32D only, and `dev32x.c` is the only place
+    that calls `ChangeTileBmp`;
+  - `SetGrid`/`GetTileVariant`/`BlitTile` agree with `WINEXE/GRAPHICS.C`'s
+    `SetGrid`, and tracing the grid shows the module writing real tiles
+    (e.g. block 0x400B -> tile 44) for the cells in question.
+- Remaining suspicion: `WINEXE/GRAPHICS.C` `FUN_004054ee` drives up to eight
+  grid objects (`DAT_00430330[0..7]`) with independent views, and for
+  `stagenm` 0/2/3/6 it takes those views from `gpHscrollbuff[0..4]`
+  (`DAT_00415100[1..6]`), i.e. one parallax/scroll area per layer.  The port
+  only has three planes (`SetGrid` puts every non-zero base into plane 2) and
+  only shears plane 2, so a stage that scrolls several layers separately -
+  Collision Chaos does have `scrb`, `scrc` and `scrz` scroll areas - cannot be
+  drawn correctly.  Needs a run with `GRID_DUMP=1` at the spot the user saw.

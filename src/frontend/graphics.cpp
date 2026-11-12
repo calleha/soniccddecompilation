@@ -1393,6 +1393,11 @@ static void DrawPlanetRotateGrid(SDL_Surface *target, const game_info *info) {
 	SDL_UnlockSurface(target);
 }
 
+static int lastFgViewX;
+static int lastFgViewY;
+static int lastBgViewX;
+static int lastBgViewY;
+
 static void PresentFrame(SDL_Renderer *renderer) {
 	/* While a movie plays it owns the screen; the game still runs and draws
 	   into the framebuffer, but presenting it would stomp the movie frame. */
@@ -1416,14 +1421,41 @@ static void PresentFrame(SDL_Renderer *renderer) {
 	SDL_UnlockTexture(presentTexture);
 	SDL_RenderTexture(renderer, presentTexture, NULL, NULL);
 	SDL_RenderPresent(renderer);
-	/* FRAME_DUMP=<frame number> saves that frame as /tmp/frame.bmp - handy for
-	   checking a screen from a headless run. */
+	/* FRAME_DUMP=<frame number> saves that frame as /tmp/frame.bmp, and
+	   FRAME_DUMP_EVERY=<n> saves every n-th frame as /tmp/frame_<n>.bmp -
+	   handy for checking a screen from a headless run. */
 	{
 		static Uint32 frameCount;
 		const char *dump = SDL_getenv("FRAME_DUMP");
-		if (dump && ++frameCount == (Uint32)SDL_atoi(dump)) {
+		const char *every = SDL_getenv("FRAME_DUMP_EVERY");
+		++frameCount;
+		if (dump && frameCount == (Uint32)SDL_atoi(dump)) {
 			SDL_SaveBMP(presentSurface, "/tmp/frame.bmp");
 			SDL_Log("dumped frame %u", frameCount);
+		}
+		if (every && (Uint32)SDL_atoi(every) > 0 && frameCount % (Uint32)SDL_atoi(every) == 0) {
+			char path[64];
+			SDL_snprintf(path, sizeof(path), "/tmp/frame_%05u.bmp", frameCount);
+			SDL_SaveBMP(presentSurface, path);
+			/* GRID_DUMP=1 also writes the tile grids and the scroll offsets. */
+			if (SDL_getenv("GRID_DUMP")) {
+				SDL_snprintf(path, sizeof(path), "/tmp/grid_%05u.txt", frameCount);
+				FILE *f = fopen(path, "w");
+				if (f) {
+					fprintf(f, "viewA %d %d viewB %d %d\n", lastFgViewX, lastFgViewY,
+					        lastBgViewX, lastBgViewY);
+					for (int plane = 0; plane < 3; ++plane) {
+						fprintf(f, "plane %d\n", plane);
+						for (int y = 0; y < STAGE_GRID_H; ++y) {
+							for (int x = 0; x < STAGE_GRID_W; ++x) {
+								fprintf(f, "%5u", (unsigned)tileGrids[plane][y][x]);
+							}
+							fputc('\n', f);
+						}
+					}
+					fclose(f);
+				}
+			}
 		}
 	}
 }
@@ -1431,8 +1463,12 @@ static void PresentFrame(SDL_Renderer *renderer) {
 void Graphics_Draw(SDL_Renderer *renderer, Sint32 scraHPosiw, Sint32 scrbHPosiw, Sint32 vscroll, const game_info *info) {
 	int fgViewX = (scraHPosiw >> 16) & 0x1ff;
 	int bgViewX = (scrbHPosiw >> 16) & 0x1ff;
+	lastFgViewX = fgViewX;
+	lastBgViewX = bgViewX;
 	int fgViewY = (vscroll >> 16) & 0xff;
 	int bgViewY = vscroll & 0xff;
+	lastFgViewY = fgViewY;
+	lastBgViewY = bgViewY;
 	UpdatePalette();
 	SDL_FillSurfaceRect(framebuffer, NULL, 48);
 	if (hscrollbuff[0].w.l || hscrollbuff[1].w.l || hscrollbuff[32].w.l || hscrollbuff[96].w.l) {
@@ -1499,8 +1535,14 @@ void Graphics_DrawSpecial(SDL_Renderer *renderer, const game_info *info) {
 	}
 	DrawSprites(framebuffer, false);
 	DrawSprites(framebuffer, true);
-	/* One present per frame: SDL_RenderPresent waits for vblank, so presenting
-	   the finished frame three times ran the whole special stage at 20 fps and
-	   made its attract demo crawl through its recorded input. */
+	/* The special stage runs at 20 fps in the original: WINEXE/WINMAIN.C
+	   specialStageLoop() only advances it - and only calls readController(),
+	   which is what feeds a demo recording - when a counter reaches 3.  So the
+	   frame is presented once per vblank for three vblanks, and a recorded
+	   input frame is consumed once per logic frame.  Do not collapse this to a
+	   single present: that triples the game speed (and would make the
+	   special stage demos run three times too fast). */
+	PresentFrame(renderer);
+	PresentFrame(renderer);
 	PresentFrame(renderer);
 }

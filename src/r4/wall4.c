@@ -1,5 +1,6 @@
 #include "../equ.h"
 #include "wall4.h"
+#include "wall4_work.h"
 #include "../action.h"
 #include "../ridechk.h"
 
@@ -9,14 +10,8 @@
 #define SPRITE_WALL4_BASE 492
 #endif
 
-typedef struct {
-    Sint16 drop_timer;
-    Uint16 flag_index;
-    Uint8 triggered;
-} wall4_work;
-
 static wall4_work *wall4_work_get(sprite_status *pActwk) {
-    return (wall4_work *)pActwk->actfree;
+    return wall4_get_work(pActwk);
 }
 
 sprite_pattern wall4_pat0 = {1, {{-64, -64, 0, SPRITE_WALL4_BASE}}};

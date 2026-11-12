@@ -191,6 +191,25 @@ static void test_wall4_wait_without_trigger_leaves_flagwork_clear(
     TEST_ASSERT_EQ_INT(ctx, 0, flagwork[18] & 1);
 }
 
+/* The R43 boss chase opens its gates by setting `triggered` on the wall4 actor
+   (see boss_4.c make_gate/egg4air_01_next), which is the same byte wall4_wait
+   consumes here. */
+static void test_wall4_wait_with_trigger_drops_the_wall(test_context *ctx) {
+    sprite_status *wall = &actwk[8];
+
+    reset_wall4_state();
+    time_flag = 18;
+    wall4_init(wall);
+    wall->r_no0 = 4;
+
+    wall4_get_work(wall)->triggered = 1;
+    wall4(wall);
+
+    assert_wall4_callbacks(ctx, wall);
+    TEST_ASSERT_EQ_INT(ctx, 1, flagwork[18] & 1);
+    TEST_ASSERT_EQ_INT(ctx, 6, wall->r_no0);
+}
+
 static void test_wall4_down_covers_counting_and_completion_paths(
     test_context *ctx) {
     sprite_status *wall = &actwk[9];
@@ -279,6 +298,7 @@ TEST_MAIN_BEGIN;
     test_wall4_sense_ignores_vertical_and_horizontal_misses(&ctx);
     test_wall4_sense_hit_then_wait_sets_flagwork(&ctx);
     test_wall4_wait_without_trigger_leaves_flagwork_clear(&ctx);
+    test_wall4_wait_with_trigger_drops_the_wall(&ctx);
     test_wall4_down_covers_counting_and_completion_paths(&ctx);
     test_frameout_s_skips_userflag_one_and_near_screen(&ctx);
     test_frameout_s_clears_flagwork_and_frames_out(&ctx);

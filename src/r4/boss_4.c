@@ -6,6 +6,7 @@
 #include "../loader2.h"
 #include "col4a.h"
 #include "playsub4.h"
+#include "wall4_work.h"
 
 typedef struct {
     char E4A_VEC;
@@ -26,7 +27,6 @@ typedef struct {
     Sint16 gate2_index;
     Sint16 bob_y_offset;
     Sint32 move_speed;
-    Uint8 gate_signal;
 } boss4_work;
 
 static boss4_work *boss4_get_work(sprite_status *pActwk) {
@@ -359,7 +359,9 @@ static void egg4air_01_next(sprite_status *pActwk, E4A *pEscRoot) {
 
             if ((actidx = boss4_get_work(pActwk)->linked_actor_index) != 0) {
                 if ((actidx = boss4_get_work(&actwk[actidx])->gate1_index) != 0) {
-                    boss4_get_work(&actwk[actidx])->gate_signal = 1;
+                    /* The gate is a wall4 actor; the reference sets its
+                       actfree[21], which is wall4's `triggered`. */
+                    wall4_get_work(&actwk[actidx])->triggered = 1;
                 }
             }
         } else if (pEscRoot->E4A_ETC == 2) {
@@ -368,7 +370,7 @@ static void egg4air_01_next(sprite_status *pActwk, E4A *pEscRoot) {
 
             if ((actidx = boss4_get_work(pActwk)->linked_actor_index) != 0) {
                 if ((actidx = boss4_get_work(&actwk[actidx])->gate2_index) != 0) {
-                    boss4_get_work(&actwk[actidx])->gate_signal = 1;
+                    wall4_get_work(&actwk[actidx])->triggered = 1;
                 }
             }
         } else {
