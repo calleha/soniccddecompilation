@@ -1717,3 +1717,15 @@ tests.
   only shears plane 2, so a stage that scrolls several layers separately -
   Collision Chaos does have `scrb`, `scrc` and `scrz` scroll areas - cannot be
   drawn correctly.  Needs a run with `GRID_DUMP=1` at the spot the user saw.
+
+## Special stage player speed boost was written to the wrong work area
+
+- Found while chasing the SPECIAL1 attract demo losing sync after the second
+  UFO (that UFO is type 1, whose reward is a 200 frame speed boost).
+- `src/special/ens.c` wrote `special_enemy_get_work(&actwk[0])->player_timer`,
+  a field nothing reads, while `src/special/pls.c` `speed_ud()` read
+  `special_player_get_work(plwk)->speed_boost_timer`, a field nothing writes.
+  The reference uses one field for both (`((short *)&actwk[0])[45]`), so the
+  boost never applied and the recorded demo's later inputs missed.
+- Fixed by sharing the player work area through `src/special/pls_work.h`.
+  After the fix the SPECIAL1 demo destroys all six UFOs instead of two.

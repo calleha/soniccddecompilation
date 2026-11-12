@@ -87,6 +87,25 @@ audio stream. The OGV files carry two complete soundtracks for the same picture
 (the JP and the US music) with identical metadata, so the track is chosen by
 position: `MOVIE_AUDIO_STREAM_INDEX` in `src/frontend/movie.c` (0 is the first).
 
+## How the stage demos stay in sync
+
+The recordings are pad data only, so a demo reproduces the original only if the
+frontend feeds the recording at the rate the module consumes frames *and* the
+module's own state matches. Two things matter here:
+
+- **Recording rate.** One recorded frame per module frame. Rounds advance once
+  per vblank (60 Hz) and special stages once per three (20 Hz, see the
+  `specialStageLoop()` note in `src/frontend/graphics.cpp`), and the original
+  recorded the pad on exactly the same cadence, so `SPECIAL1.BIN`'s 510 frames
+  are 25.6 s of special-stage time, not 8.5 s.
+- **The modules' own `random()`.** The special stage (`src/special/etc_s.c`) and
+  the thanks screen have functions whose names also exist in libc. A shared
+  object loaded after libc gets its internal calls bound to libc's version, so
+  the special stage's `random()` (and its `ranum` seed) were never used and the
+  attract demos - which were recorded against the original generator - drifted
+  apart after the first few UFOs. The variant libraries are therefore linked
+  with `-Wl,-Bsymbolic-functions`; keep that when adding module targets.
+
 ## The endings
 
 Clearing the last act of R8 ends the game. The reference frontend

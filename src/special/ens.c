@@ -6,6 +6,7 @@
 #include "coli_s.h"
 #include "etc_s.h"
 #include "game.h"
+#include "pls_work.h"
 #include "kaiten.h"
 
 typedef struct {
@@ -28,13 +29,8 @@ typedef struct {
     Sint16 *movement_table_start;
     Sint16 *movement_table_cursor;
     Uint16 movement_count;
-    union {
-        Uint16 player_timer;
-        struct {
-            Uint8 ufo_type;
-            Uint8 ufo_direction;
-        };
-    };
+    Uint8 ufo_type;
+    Uint8 ufo_direction;
     Uint8 flash_timer;
 } special_enemy_work;
 
@@ -539,7 +535,9 @@ void ufo01(sprite_status_sp *actionwk) {
         ring_add(rufo_getnm >> 1);
         break;
     case 1:
-        special_enemy_get_work(&actwk[0])->player_timer = 200;
+        /* The reference writes ((short *)&actwk[0])[45] - the player's
+           speed_boost_timer - which speed_ud() burns down as a speed boost. */
+        special_player_get_work(&actwk[0])->speed_boost_timer = 200;
         rufo_getnm = 20;
     }
 }

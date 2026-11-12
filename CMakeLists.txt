@@ -4760,6 +4760,13 @@ function(soniccd_add_variant variant)
     )
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
       target_compile_options(${target} PRIVATE -fcommon)
+      # The modules have functions whose names also exist in libc - the special
+      # stage's own random() is the important one.  Without this the calls made
+      # inside a module bind to libc's version instead (the module is loaded
+      # after libc in the global scope), so the module's own random() and its
+      # ranum seed were never used: the attract demos, which were recorded
+      # against the original generator, fell out of sync.
+      target_link_options(${target} PRIVATE -Wl,-Bsymbolic-functions)
     endif()
   endif()
 endfunction()

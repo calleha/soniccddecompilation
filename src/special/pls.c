@@ -2,30 +2,12 @@
 #include "common.h"
 #include "sps_equ.h"
 #include "pls.h"
+#include "pls_work.h"
 #include "act_s.h"
 #include "coli_s.h"
 #include "etc_s.h"
 #include "game.h"
 #include "sin.h"
-
-typedef struct {
-    Sint16 timer;
-    Uint16 angle_x;
-    union {
-        Sint32 angle_z_accum;
-        struct {
-            Uint16 angle_z_fraction;
-            Uint16 angle_z;
-        };
-    };
-    Uint8 facing_frame;
-    Uint8 state_timer;
-    Sint16 speed_boost_timer;
-} special_player_work;
-
-static special_player_work *special_player_get_work(sprite_status_sp *plwk) {
-    return (special_player_work *)plwk->actfree;
-}
 
 void (*pl_acttbl[24])(sprite_status_sp *) = {
     &play0,  &play1,  &play2,  &play3,  &play4,  &play5,  &play6,  &play7,

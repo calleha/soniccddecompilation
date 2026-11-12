@@ -1,3 +1,11 @@
+/* <stdlib.h> declares POSIX random(); the decompiled special stage declares
+   its own Sint32 random(void) (that clash is also why the plugin is linked with
+   -Wl,-Bsymbolic-functions: at run time libc's random() would win).  Parse
+   stdlib first, then rename the game symbol inside this harness. */
+#include <stdlib.h>
+
+#define random game_random
+
 #include <string.h>
 
 #include "support/test_runner.h"
