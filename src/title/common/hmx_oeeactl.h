@@ -20,6 +20,7 @@ Sint32 OEGridBmpCreate(void);
 void OEGridBmpDelete(void);
 Sint32 OESprBmpCreate(void);
 void OESprBmpDelete(void);
+hmx_bitmap *OESprBmpDuplicateUnfaded(Sint32 indx, Sint32 palet, Sint32 unfaded);
 Sint32 OESprCreate(Uint16 timing);
 Sint32 OESprCreateIndx(Sint32 indx);
 void OESprDelete(Uint16 timing);

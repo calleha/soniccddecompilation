@@ -88,6 +88,7 @@ int Title_LoadDLL(const char *path) {
 
     Title_PrepareInfo();
     Title_DLLInit(&titleInfo, memoryTbl, functionTbl);
+    Graphics_TitleSnapshotUnfadedPalette();
     firstTitle = 0;
     return 1;
 }
@@ -101,6 +102,7 @@ static int Title_SwitchDLL(const char *path) {
 
     Title_PrepareInfo();
     Title_DLLInit(&titleInfo, memoryTbl, functionTbl);
+    Graphics_TitleSnapshotUnfadedPalette();
     firstTitle = 0;
     return 1;
 }

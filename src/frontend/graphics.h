@@ -35,6 +35,7 @@ void Graphics_DrawPlanet(SDL_Renderer *renderer, const game_info *info);
 void Graphics_DrawThanks(SDL_Renderer *renderer, const game_info *info);
 void Graphics_DrawSpecial(SDL_Renderer *renderer, const game_info *info);
 void Graphics_Shutdown(void);
+void Graphics_TitleSnapshotUnfadedPalette(void);
 
 #ifdef __cplusplus
 }

@@ -139,3 +139,48 @@ Note that the colour is *drawn* content, not the clear colour: forcing
 `hmxBackground.color` to another palette entry while running changes nothing on
 screen, which is why this needed a module-side change rather than the fork's
 `clear_screen_colour()` approach.
+
+## Title screen flash and fade-in (CD93 parity)
+
+Once Sonic has finished turning around on the opening screen, the 1993 release
+flashes the whole screen white and then fades the title screen in from that
+white, letting the colour channels come back one at a time, so the picture
+washes through yellow and then red before it settles on its own colours.  Sonic
+himself is the only thing that is not part of it.  The 1996 version this
+decompilation follows fades towards white on palette lines 0-2 instead, which on
+screen is a white flash of the middle band of the title art with Sonic
+brightened along with it.
+
+The port has the 1993 behaviour, with the total effect kept at the reference's
+21 frames (`src/title/opening/opndo.c`):
+
+* `OEFlashPalette()` writes **all four** palette lines from `tblPal1..4`, which
+  is what makes the flash cover the whole screen - the tiled backdrop, the
+  title art and its sprites (Little Planet included, as it shares Sonic's
+  palette line).  The first three frames flood the screen with `FLASH_BRIGHT`
+  (224, the value the reference's fade tops out at), then 18 frames fade back.
+* The fade releases the channels in turn (`OEFlashChannel()`): blue returns to
+  its own value over the first six frames (white turns yellow), green over the
+  next six (yellow turns red) and red over the last six, which is the opening's
+  own palette again on the last frame, so the hand-over to the title screen
+  cannot be seen.
+* Sonic is drawn from copies of his sprites instead, whose colours live at
+  palette entries 144-159 rather than in line 3 (64-79), so the flash never
+  touches them: `OEFlashSpritesCreate()` (called from `DLLInit()`) copies the
+  hand frames, eyes, nose and held pose through `OESprBmpDuplicateUnfaded()`
+  (`src/title/common/hmx_oeeactl.c`), and `OEFadeIn()` points those sprites at
+  the copies while the flash runs.  The frontend keeps the colours - a snapshot
+  of the fourth palette line taken when the title module was initialised
+  (`Graphics_TitleSnapshotUnfadedPalette()`) - because line 3 is what the flash
+  overwrites (`src/frontend/graphics.cpp`, `UpdatePalette()`).
+* The art leaves holes in Sonic's sprites: his pupils and nose are transparent
+  and show the artwork behind his face, which is why a palette flash shows
+  through him.  `OESprBmpDuplicateUnfaded()` therefore also closes the
+  transparent pixels that a sprite does not open onto its own border, using the
+  line's black.
+* `OEFadeIn()` shows the eyes and nose sprites (timing 12) as well as the pose
+  and the raised hand, so his face is complete while the flash runs.
+
+The effect is 3 white frames plus 18 fade frames, i.e. the same 21 frames as
+the reference's fade; the fork in `soniccdrespinned` spreads the same idea over
+4 + 21.

@@ -51,6 +51,7 @@ static Sint32 posiRightArrow[3] = {210, 212, 214};
 extern Uint16 nSequenceNum;
 extern Sint32 nTimerCunt;
 extern void (*hmx_sprite_set_position_module)(hmx_sprite *, Sint32, Sint32);
+extern void (*hmx_sprite_set_bitmap_module)(hmx_sprite *, hmx_bitmap *);
 extern draw_context *s_ctx;
 extern sprite_bmp infoSprtBmp[];
 extern void (*hmx_grid_set_horz_offsets_module)(hmx_grid *, Sint32 *);
@@ -58,15 +59,35 @@ extern grid_bmp infoGridBmp[];
 extern void (*hmx_ddagrid_set_scan_module)(hmx_ddagrid *, Sint32, Sint32,
                                            Sint32, Sint32, Sint32);
 extern score_data crntScorData;
-extern void (*hmx_background_set_background_module)(hmx_background *, Sint32);
 
-/* tblPal4[1] is the darker of the two backdrop blues the title art uses
-   (0, 0, 96); in the title mode palette it sits at index 65 (lpColorwk[49], as
-   OEClrset() copies tblPal4 to the fourth palette line).  The backdrop only
-   starts with the title sequence - the Sega logo (2), the dark (3) and the
-   Sonic (5) sequences clear to transparent black, as in the 1993 release. */
-#define OPENING_BACKGROUND_COLOUR 65
-#define OPENING_BACKGROUND_SEQUENCE 6
+/* The title screen leads in with a white flash and then a fade that lets the
+   colour channels return one at a time, so the picture washes through yellow
+   and red before it settles on the opening's own colours.  That is 1993
+   behaviour: the reference's 1996 OEFadeIn() simply fades towards white on
+   palette lines 0-2, and only the middle band of the screen brightens.  The
+   port keeps the reference's 21 frames for the whole effect rather than the
+   fork's 4 + 21, so the flash is 3 white frames and the fade 18 (six per
+   channel). */
+#define FLASH_WHITE_FRAMES 3
+#define FLASH_FADE_FRAMES 18 /* three equal stages, one per colour channel */
+/* Brightness every channel is faded from (the reference's fade tops out
+   here too). */
+#define FLASH_BRIGHT 224
+/* Palette line the opening's Sonic sprites are extracted with (the fourth,
+   tblPal4), and the entries their unfaded copies are moved to; the frontend
+   keeps Sonic's own colours there (see Graphics_TitleSnapshotUnfadedPalette()
+   in src/frontend/graphics.cpp), out of reach of the flash. */
+#define SONIC_PALETTE_OFFSET 64
+#define UNFADED_PALETTE_OFFSET 144
+/* OPN_infoSprtBmp entries that make up Sonic on the title screen: the hand
+   frames he raises, the eyes and nose that fill in his face, and the pose he
+   holds there ("front turn 4", the frame the Sonic sequence ends on).  They
+   are drawn from unfaded copies of their bitmaps while the flash runs, which
+   is what keeps the flash off him.  Little Planet shares Sonic's palette line,
+   so it is drawn in the flash's colours like the rest of the screen - it does
+   not open the holes in his face that would need closing. */
+static const Uint16 flashSprtIndx[] = {8, 9, 10, 11, 12, 13, 23};
+#define NUM_FLASH_SPRT (sizeof(flashSprtIndx) / sizeof(flashSprtIndx[0]))
 extern Uint32 selectIndx;
 extern Uint16 swData1;
 extern PALETTEENTRY tblPal2[];
@@ -88,6 +109,7 @@ static PALETTEENTRY workPalet[4][16];
 static Uint32 bDrawDisable;
 static Uint32 *testBmp;
 static Uint32 testSpr;
+static hmx_bitmap *flashSprtBmp[NUM_FLASH_SPRT];
 
 void OEDraw(void) {
     if (nSequenceNum > 1 && bDrawDisable == 0) {
@@ -669,6 +691,104 @@ static void OEUpdateMsg(void) {
                                        arrowPoint.x, arrowPoint.y);
 }
 
+/* The flash fades every palette line, so Sonic is drawn from copies of his
+   sprites whose colours the flash never touches.  Made once, when the module's
+   bitmaps have been loaded (see DLLInit()). */
+void OEFlashSpritesCreate(void) {
+    Sint32 i;
+
+    for (i = 0; i < (Sint32)NUM_FLASH_SPRT; ++i) {
+
+        flashSprtBmp[i] = OESprBmpDuplicateUnfaded(
+            flashSprtIndx[i], SONIC_PALETTE_OFFSET, UNFADED_PALETTE_OFFSET);
+    }
+}
+
+/* Points Sonic's sprites at their unfaded copies for the duration of the
+   flash.  Called after the sprites have been created, as OESprCreate() and
+   OESprCreateIndx() attach the bitmaps the module loaded. */
+static void OEFlashSpritesDraw(void) {
+    Sint32 i;
+
+    for (i = 0; i < (Sint32)NUM_FLASH_SPRT; ++i) {
+
+        if (flashSprtBmp[i] == 0)
+            continue;
+        if (*infoSprtBmp[flashSprtIndx[i]].lphSpr == 0)
+            continue;
+        hmx_sprite_set_bitmap_module(
+            s_ctx->sprites[*infoSprtBmp[flashSprtIndx[i]].lphSpr],
+            flashSprtBmp[i]);
+    }
+}
+
+/* One channel of the fade-in from white.  The channels are released one after
+   another: `channel` 1 (blue) gets back to its own colour during the first
+   third of the fade, 2 (green) during the second and 3 (red) during the last,
+   which is what makes the screen pass through yellow and then red. */
+static Uint8 OEFlashChannel(Uint8 base, Sint32 fade, Sint32 channel) {
+    Sint32 step = FLASH_FADE_FRAMES / 3;
+    Sint32 remaining = channel * step - fade;
+    Sint32 value;
+
+    /* Colours that are already this bright are left where they are. */
+    if (base >= FLASH_BRIGHT)
+        return base;
+    if (remaining <= 0)
+        return base;
+    if (remaining > step)
+        remaining = step;
+
+    value = base + (FLASH_BRIGHT - base) * remaining / step;
+
+    return (Uint8)(value > 255 ? 255 : value);
+}
+
+/* Draws one frame of the intro: the first FLASH_WHITE_FRAMES frames flood the
+   whole screen with white, and the remaining FLASH_FADE_FRAMES blend it back
+   to the title screen's palette through yellow and red.  Every palette line is
+   written, so the backdrop and the title art flash and fade along with
+   everything else.  The entries the copies of Sonic's sprites are drawn from
+   (UNFADED_PALETTE_OFFSET upwards) are not part of any line and stay as they
+   are, so Sonic and his eyes never change. */
+static void OEFlashPalette(Sint32 frame) {
+    PALETTEENTRY *lpPal;
+    Sint32 fade = frame - FLASH_WHITE_FRAMES + 1;
+    Sint32 n, j;
+
+    if (fade < 0)
+        fade = 0;
+    if (fade > FLASH_FADE_FRAMES)
+        fade = FLASH_FADE_FRAMES;
+
+    for (n = 0; n < 4; ++n) {
+
+        switch (n) {
+
+        case 0:
+            lpPal = tblPal1;
+            break;
+        case 1:
+            lpPal = tblPal2;
+            break;
+        case 2:
+            lpPal = tblPal3;
+            break;
+        default:
+            lpPal = tblPal4;
+            break;
+        }
+        for (j = 0; j < 16; ++j) {
+
+            workPalet[n][j].peRed = OEFlashChannel(lpPal[j].peRed, fade, 3);
+            workPalet[n][j].peGreen = OEFlashChannel(lpPal[j].peGreen, fade, 2);
+            workPalet[n][j].peBlue = OEFlashChannel(lpPal[j].peBlue, fade, 1);
+            workPalet[n][j].peFlags = lpPal[j].peFlags;
+        }
+        OEClrset(workPalet[n], n);
+    }
+}
+
 void OETitleSta(void) {
     OEAllSprDelete();
     if (nTimerCunt == 0) {
@@ -678,10 +798,9 @@ void OETitleSta(void) {
             OEGridCreate(0);
         OEGridCreate(1);
         bDrawDisable = 1;
-        nFadoTime = 21;
+        nFadoTime = FLASH_WHITE_FRAMES + FLASH_FADE_FRAMES;
         nFadoValu = 32;
         nFadoSeqNum = 7;
-        bFadePaletDisable[3] = 1;
         OESetSequenceNum(9);
     }
     OESprCreate(7);
@@ -751,12 +870,14 @@ void OEFadeOut(void) {
 }
 
 void OEFadeIn(void) {
-    Sint32 n, j;
-    PALETTEENTRY *lpPal;
 
     OEAllSprDelete();
     if (nFadoSeqNum == 7) {
         OESprCreate(7);
+        /* The eyes and the nose are separate sprites that fill in Sonic's
+           face; they have to be there during the flash too, or it shows
+           through him. */
+        OESprCreate(12);
         OESprCreate(11);
     }
 
@@ -772,45 +893,8 @@ void OEFadeIn(void) {
     } else {
 
         bDrawDisable = 0;
-        if (nFadoValu * nTimerCunt < 256) {
-
-            for (n = 0; n < 4; ++n) {
-
-                switch (n) {
-
-                case 0:
-                    lpPal = tblPal1;
-                    break;
-                case 1:
-                    lpPal = tblPal2;
-                    break;
-                case 2:
-                    lpPal = tblPal3;
-                    break;
-                case 3:
-                    lpPal = tblPal4;
-                    break;
-                }
-                for (j = 0; j < 16; ++j) {
-
-                    workPalet[n][j].peRed =
-                        lpPal[j].peRed > 224 - nFadoValu * nTimerCunt
-                            ? lpPal[j].peRed
-                            : 224 - nFadoValu * nTimerCunt;
-                    workPalet[n][j].peGreen =
-                        lpPal[j].peGreen > 224 - nFadoValu * nTimerCunt
-                            ? lpPal[j].peGreen
-                            : 224 - nFadoValu * nTimerCunt;
-                    workPalet[n][j].peBlue =
-                        lpPal[j].peBlue > 224 - nFadoValu * nTimerCunt
-                            ? lpPal[j].peBlue
-                            : 224 - nFadoValu * nTimerCunt;
-                    workPalet[n][j].peFlags = lpPal[j].peFlags;
-                }
-                if (bFadePaletDisable[n] == 0)
-                    OEClrset(workPalet[n], n);
-            }
-        }
+        OEFlashPalette(nTimerCunt);
+        OEFlashSpritesDraw();
     }
 }
 

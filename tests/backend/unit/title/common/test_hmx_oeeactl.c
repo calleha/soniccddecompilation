@@ -63,6 +63,10 @@ static Uint32 *grid_bitmap_slots[4];
 static unsigned char scan_storage[128][256];
 static unsigned char file_storage[256];
 static unsigned char file_alloc_storage[256];
+/* Handed out by fake_mem_alloc(); the sprite copier asks for two blocks, so
+   they have to be distinct. */
+static unsigned char alloc_pool[8192];
+static Sint32 alloc_pool_next;
 static unsigned char cmp_storage[4096];
 static unsigned char sprite_cmp_storage[4096];
 static unsigned char grid_cmp_storage[4096];
@@ -304,9 +308,16 @@ static void fake_close_file(Sint32 handle) {
 }
 
 static void *fake_mem_alloc(Sint32 bytes) {
-    (void)bytes;
+    unsigned char *block;
+
     ++alloc_call_count;
-    return file_alloc_storage;
+    if (bytes < 0)
+        return 0;
+    if (alloc_pool_next + bytes > (Sint32)sizeof(alloc_pool))
+        return 0;
+    block = &alloc_pool[alloc_pool_next];
+    alloc_pool_next += bytes;
+    return block;
 }
 
 static void fake_mem_free(void *ptr) {
@@ -334,6 +345,7 @@ static void reset_fixture(void) {
     memset(scan_storage, 0, sizeof(scan_storage));
     memset(file_storage, 0, sizeof(file_storage));
     memset(file_alloc_storage, 0, sizeof(file_alloc_storage));
+    memset(alloc_pool, 0, sizeof(alloc_pool));
     memset(cmp_storage, 0, sizeof(cmp_storage));
     memset(sprite_cmp_storage, 0, sizeof(sprite_cmp_storage));
     memset(grid_cmp_storage, 0, sizeof(grid_cmp_storage));
@@ -357,6 +369,11 @@ static void reset_fixture(void) {
     memset(flags_sprites, 0, sizeof(flags_sprites));
     memset(flags_values, 0, sizeof(flags_values));
     memset(grid_release_values, 0, sizeof(grid_release_values));
+    memset(sprBmpW, 0, sizeof(sprBmpW));
+    memset(sprBmpH, 0, sizeof(sprBmpH));
+    memset(sprUnfadedBmp, 0, sizeof(sprUnfadedBmp));
+    sprUnfadedNum = 0;
+    alloc_pool_next = 0;
 
     for (i = 0; i < 1000; ++i) {
         sprite_table[i] = sprite_handle(i);
@@ -736,6 +753,15 @@ static void test_load_sprite2_opening_variant_paths(test_context *ctx) {
     TEST_ASSERT_TRUE(ctx, bitmaps[32] == bitmap_handle(33));
     TEST_ASSERT_EQ_INT(ctx, 33, transparency_call_count);
     TEST_ASSERT_EQ_INT(ctx, 2, open_call_count);
+    /* The bitmap sizes are kept, so a copy can be made without repeating the
+       loader's padding rules (see OESprBmpDuplicateUnfaded()); the two
+       bitmaps that do not come from the sprite table have none. */
+    TEST_ASSERT_EQ_INT(ctx, 8, sprBmpW[0]);
+    TEST_ASSERT_EQ_INT(ctx, 4, sprBmpH[0]);
+    TEST_ASSERT_EQ_INT(ctx, 16, sprBmpW[1]);
+    TEST_ASSERT_EQ_INT(ctx, 5, sprBmpH[1]);
+    TEST_ASSERT_EQ_INT(ctx, 0, sprBmpW[3]);
+    TEST_ASSERT_EQ_INT(ctx, 0, sprBmpW[31]);
 
     reset_fixture();
     load_cmp_return = prepare_sprite_cmp_in(sprite_cmp_storage, 5);
@@ -744,6 +770,75 @@ static void test_load_sprite2_opening_variant_paths(test_context *ctx) {
                                        bitmaps, 2));
     TEST_ASSERT_EQ_INT(ctx, 3, bitmap_create_call_count);
     TEST_ASSERT_TRUE(ctx, bitmaps[2] == bitmap_handle(3));
+}
+
+static void test_duplicate_unfaded_moves_colours_and_closes_holes(
+    test_context *ctx) {
+    hmx_bitmap *copy;
+    Uint8 *src;
+    Uint8 *dst;
+    Sint32 i;
+    Sint32 released;
+
+    /* Nothing loaded: no copy. */
+    reset_fixture();
+    TEST_ASSERT_TRUE(ctx, OESprBmpDuplicateUnfaded(0, 64, 144) == 0);
+    TEST_ASSERT_EQ_INT(ctx, 0, bitmap_create_call_count);
+
+    /* Loaded but without a recorded size: no copy either. */
+    reset_fixture();
+    s_ctx->spr_bitmaps[0] = bitmap_handle(5);
+    TEST_ASSERT_TRUE(ctx, OESprBmpDuplicateUnfaded(0, 64, 144) == 0);
+    TEST_ASSERT_EQ_INT(ctx, 0, bitmap_create_call_count);
+
+    /* A 5x5 sprite whose colours come from the fourth palette line.  The
+       transparent pixel in the middle is a hole - all four of its neighbours
+       are drawn - and has to be closed, while the border stays transparent. */
+    reset_fixture();
+    s_ctx->spr_bitmaps[0] = bitmap_handle(5);
+    sprBmpW[0] = 5;
+    sprBmpH[0] = 5;
+    src = scan_storage[5];
+    for (i = 0; i < 25; ++i)
+        src[i] = 255;
+    src[6] = 64;
+    src[7] = 65;
+    src[8] = 64;
+    src[11] = 65;
+    src[13] = 65;
+    src[16] = 64;
+    src[17] = 65;
+    src[18] = 64;
+
+    copy = OESprBmpDuplicateUnfaded(0, 64, 144);
+
+    TEST_ASSERT_TRUE(ctx, copy == bitmap_handle(1));
+    TEST_ASSERT_EQ_INT(ctx, 1, bitmap_create_call_count);
+    TEST_ASSERT_EQ_INT(ctx, 5, bitmap_create_widths[0]);
+    TEST_ASSERT_EQ_INT(ctx, 5, bitmap_create_heights[0]);
+    dst = scan_storage[1];
+    /* Colours moved from line 3 (64-79) to the spare entries (144-159)... */
+    TEST_ASSERT_EQ_INT(ctx, 144, dst[6]);
+    TEST_ASSERT_EQ_INT(ctx, 145, dst[7]);
+    TEST_ASSERT_EQ_INT(ctx, 145, dst[11]);
+    /* ...the hole closed with the line's black... */
+    TEST_ASSERT_EQ_INT(ctx, 144, dst[12]);
+    /* ...and the transparent pixels that open onto the border left alone. */
+    TEST_ASSERT_EQ_INT(ctx, 255, dst[0]);
+    TEST_ASSERT_EQ_INT(ctx, 255, dst[24]);
+    TEST_ASSERT_EQ_INT(ctx, 2, alloc_call_count);
+    TEST_ASSERT_EQ_INT(ctx, 2, free_call_count);
+    TEST_ASSERT_TRUE(ctx, transparency_bitmaps[0] == copy);
+    TEST_ASSERT_EQ_INT(ctx, 255, transparency_values[0]);
+
+    /* The copy is released with the other sprite bitmaps. */
+    released = 0;
+    OESprBmpDelete();
+    for (i = 0; i < bitmap_release_call_count; ++i) {
+        if (bitmap_release_values[i] == copy)
+            released = 1;
+    }
+    TEST_ASSERT_EQ_INT(ctx, 1, released);
 }
 
 static void test_load_grid_success_failure_and_grid_bitmap_create_delete(
@@ -885,6 +980,7 @@ test_bitmap_file_loads_rows_palette_and_cleanup(&ctx);
 test_bitmap_file2_loads_with_destination_stride(&ctx);
 test_load_sprite1_success_failure_and_sprite_bitmap_create(&ctx);
 test_load_sprite2_opening_variant_paths(&ctx);
+test_duplicate_unfaded_moves_colours_and_closes_holes(&ctx);
 test_load_grid_success_failure_and_grid_bitmap_create_delete(&ctx);
 test_sprite_create_delete_and_handle_reuse(&ctx);
 test_bitmap_delete_grid_delete_create_and_delete_ea(&ctx);

@@ -17,6 +17,7 @@ static Sint32 clrset_call_count;
 static PALETTEENTRY *clrset_palettes[4];
 static Uint16 clrset_numbers[4];
 static Sint32 create_ea_call_count;
+static Sint32 flash_sprites_create_call_count;
 static Sint32 delete_ea_call_count;
 static Sint32 open_sta_call_count;
 static Sint32 sega_logo_call_count;
@@ -48,6 +49,8 @@ Sint32 OECreateEA(void) {
     ++create_ea_call_count;
     return 0;
 }
+
+void OEFlashSpritesCreate(void) { ++flash_sprites_create_call_count; }
 
 void OEDeleteEA(void) { ++delete_ea_call_count; }
 
@@ -199,6 +202,7 @@ static void reset_fixture(void) {
 
     clrset_call_count = 0;
     create_ea_call_count = 0;
+    flash_sprites_create_call_count = 0;
     delete_ea_call_count = 0;
     open_sta_call_count = 0;
     sega_logo_call_count = 0;
@@ -348,6 +352,7 @@ static void test_dllinit_binds_imports_score_callbacks_and_initializes(
     TEST_ASSERT_EQ_INT(ctx, 2, clrset_numbers[2]);
     TEST_ASSERT_EQ_INT(ctx, 3, clrset_numbers[3]);
     TEST_ASSERT_EQ_INT(ctx, 1, create_ea_call_count);
+    TEST_ASSERT_EQ_INT(ctx, 1, flash_sprites_create_call_count);
     TEST_ASSERT_EQ_INT(ctx, 1, nSequenceNum);
     TEST_ASSERT_EQ_INT(ctx, 0, nTimerCunt);
 }

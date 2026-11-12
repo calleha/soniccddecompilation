@@ -9,4 +9,5 @@ void OEOpenSta(void);
 void OESegaLogo(void);
 void OEDark(void);
 void OESonic(void);
+void OEFlashSpritesCreate(void);
 Sint32 OEEnd(void);

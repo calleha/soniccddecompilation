@@ -22,6 +22,7 @@ PALETTEENTRY tblPal2a[16];
 PALETTEENTRY tblPal3[16];
 PALETTEENTRY tblPal4[16];
 void (*hmx_sprite_set_position_module)(hmx_sprite *, Sint32, Sint32);
+void (*hmx_sprite_set_bitmap_module)(hmx_sprite *, hmx_bitmap *);
 void (*hmx_grid_set_horz_offsets_module)(hmx_grid *, Sint32 *);
 void (*hmx_ddagrid_set_scan_module)(hmx_ddagrid *, Sint32, Sint32, Sint32,
                                     Sint32, Sint32);
@@ -62,6 +63,14 @@ static Sint32 position_call_count;
 static hmx_sprite *position_sprites[4096];
 static Sint32 position_x[4096];
 static Sint32 position_y[4096];
+static Sint32 bitmap_call_count;
+static hmx_sprite *bitmap_sprites[4096];
+static hmx_bitmap *bitmap_values[4096];
+static Sint32 duplicate_call_count;
+static Sint32 duplicate_index[16];
+static Sint32 duplicate_palette[16];
+static Sint32 duplicate_unfaded[16];
+static char fake_flash_storage[16];
 static Sint32 horz_offsets_call_count;
 static hmx_grid *horz_offsets_grid[8];
 static Sint32 horz_offsets_first[8];
@@ -89,6 +98,20 @@ static void fake_sprite_set_position(hmx_sprite *sprite, Sint32 x, Sint32 y) {
     position_x[position_call_count] = x;
     position_y[position_call_count] = y;
     ++position_call_count;
+}
+
+static void fake_sprite_set_bitmap(hmx_sprite *sprite, hmx_bitmap *bitmap) {
+    bitmap_sprites[bitmap_call_count] = sprite;
+    bitmap_values[bitmap_call_count] = bitmap;
+    ++bitmap_call_count;
+}
+
+hmx_bitmap *OESprBmpDuplicateUnfaded(Sint32 indx, Sint32 palet,
+                                     Sint32 unfaded) {
+    duplicate_index[duplicate_call_count] = indx;
+    duplicate_palette[duplicate_call_count] = palet;
+    duplicate_unfaded[duplicate_call_count] = unfaded;
+    return (hmx_bitmap *)&fake_flash_storage[duplicate_call_count++];
 }
 
 static void fake_grid_set_horz_offsets(hmx_grid *grid, Sint32 *offsets) {
@@ -216,6 +239,11 @@ static void reset_fixture(void) {
     memset(position_sprites, 0, sizeof(position_sprites));
     memset(position_x, 0, sizeof(position_x));
     memset(position_y, 0, sizeof(position_y));
+    memset(bitmap_sprites, 0, sizeof(bitmap_sprites));
+    memset(bitmap_values, 0, sizeof(bitmap_values));
+    memset(duplicate_index, 0, sizeof(duplicate_index));
+    memset(duplicate_palette, 0, sizeof(duplicate_palette));
+    memset(duplicate_unfaded, 0, sizeof(duplicate_unfaded));
     memset(horz_offsets_grid, 0, sizeof(horz_offsets_grid));
     memset(horz_offsets_first, 0, sizeof(horz_offsets_first));
     memset(horz_offsets_last, 0, sizeof(horz_offsets_last));
@@ -268,8 +296,10 @@ static void reset_fixture(void) {
     bDrawDisable = 0;
     testBmp = 0;
     testSpr = 0;
+    memset(flashSprtBmp, 0, sizeof(flashSprtBmp));
     KeyState[0] = 0;
     hmx_sprite_set_position_module = fake_sprite_set_position;
+    hmx_sprite_set_bitmap_module = fake_sprite_set_bitmap;
     hmx_grid_set_horz_offsets_module = fake_grid_set_horz_offsets;
     hmx_ddagrid_set_scan_module = fake_ddagrid_set_scan;
     sMemCpy = fake_mem_cpy;
@@ -292,6 +322,8 @@ static void reset_fixture(void) {
     cd_pause_call_count = 0;
     wave_call_count = 0;
     position_call_count = 0;
+    bitmap_call_count = 0;
+    duplicate_call_count = 0;
     horz_offsets_call_count = 0;
     scan_call_count = 0;
     read_score_call_count = 0;
@@ -398,13 +430,19 @@ static void test_get_next_menu_forward_backward_and_initial(test_context *ctx) {
 static void test_start_open_logo_dark_and_sonic_sequences(test_context *ctx) {
     reset_fixture();
     OETitleSta();
-    TEST_ASSERT_EQ_INT(ctx, 1, grid_create_call_count);
-    TEST_ASSERT_EQ_INT(ctx, 1, grid_create_values[0]);
+    /* The title screen brings the blue backdrop (grid 0) in with the water
+       (grid 1); it is not on screen for the earlier sequences. */
+    TEST_ASSERT_EQ_INT(ctx, 2, grid_create_call_count);
+    TEST_ASSERT_EQ_INT(ctx, 0, grid_create_values[0]);
+    TEST_ASSERT_EQ_INT(ctx, 1, grid_create_values[1]);
     TEST_ASSERT_EQ_INT(ctx, 2, spr_create_call_count);
     TEST_ASSERT_EQ_INT(ctx, 7, spr_create_values[0]);
     TEST_ASSERT_EQ_INT(ctx, 11, spr_create_values[1]);
     TEST_ASSERT_EQ_INT(ctx, 9, set_sequence_values[0]);
-    TEST_ASSERT_EQ_INT(ctx, 1, bFadePaletDisable[3]);
+    /* The flash writes all four palette lines, so no line is exempt any more,
+       and the effect keeps the reference's 21 frames (see the fade-in test). */
+    TEST_ASSERT_EQ_INT(ctx, 21, nFadoTime);
+    TEST_ASSERT_EQ_INT(ctx, 0, bFadePaletDisable[3]);
 
     reset_fixture();
     nTimerCunt = 1;
@@ -506,26 +544,47 @@ static void test_fade_out_copies_darkens_and_finishes(test_context *ctx) {
 }
 
 static void test_fade_in_intermediate_and_finish(test_context *ctx) {
+    /* First frame of the fade: every channel is at FLASH_BRIGHT and the eyes
+       and nose that complete Sonic's face are up with his pose and hand. */
     reset_fixture();
     nFadoSeqNum = 7;
-    nFadoTime = 5;
+    nFadoTime = FLASH_WHITE_FRAMES + FLASH_FADE_FRAMES;
     nFadoValu = 32;
-    nTimerCunt = 1;
+    nTimerCunt = 0;
     tblPal1[0].peRed = 250;
     tblPal1[0].peGreen = 251;
     tblPal1[0].peBlue = 252;
 
     OEFadeIn();
     TEST_ASSERT_EQ_INT(ctx, 1, all_spr_delete_call_count);
-    TEST_ASSERT_EQ_INT(ctx, 2, spr_create_call_count);
+    TEST_ASSERT_EQ_INT(ctx, 3, spr_create_call_count);
     TEST_ASSERT_EQ_INT(ctx, 7, spr_create_values[0]);
-    TEST_ASSERT_EQ_INT(ctx, 11, spr_create_values[1]);
+    TEST_ASSERT_EQ_INT(ctx, 12, spr_create_values[1]);
+    TEST_ASSERT_EQ_INT(ctx, 11, spr_create_values[2]);
     TEST_ASSERT_EQ_INT(ctx, 0, bDrawDisable);
     TEST_ASSERT_EQ_INT(ctx, 4, clrset_call_count);
+    TEST_ASSERT_EQ_INT(ctx, 0, clrset_numbers[0]);
+    TEST_ASSERT_EQ_INT(ctx, 3, clrset_numbers[3]);
     TEST_ASSERT_EQ_INT(ctx, 250, workPalet[0][0].peRed);
     TEST_ASSERT_EQ_INT(ctx, 251, workPalet[0][0].peGreen);
     TEST_ASSERT_EQ_INT(ctx, 252, workPalet[0][0].peBlue);
     TEST_ASSERT_EQ_INT(ctx, tblPal4[15].peFlags, workPalet[3][15].peFlags);
+
+    /* Last frame of the fade: the opening's own colours are back, so nothing
+       moves as the title screen takes over. */
+    reset_fixture();
+    nFadoSeqNum = 7;
+    nFadoTime = FLASH_WHITE_FRAMES + FLASH_FADE_FRAMES;
+    nTimerCunt = FLASH_WHITE_FRAMES + FLASH_FADE_FRAMES - 1;
+    OEFadeIn();
+    for (Sint32 i = 0; i < 16; ++i) {
+        TEST_ASSERT_EQ_INT(ctx, tblPal1[i].peRed, workPalet[0][i].peRed);
+        TEST_ASSERT_EQ_INT(ctx, tblPal1[i].peGreen, workPalet[0][i].peGreen);
+        TEST_ASSERT_EQ_INT(ctx, tblPal1[i].peBlue, workPalet[0][i].peBlue);
+        TEST_ASSERT_EQ_INT(ctx, tblPal4[i].peRed, workPalet[3][i].peRed);
+        TEST_ASSERT_EQ_INT(ctx, tblPal4[i].peGreen, workPalet[3][i].peGreen);
+        TEST_ASSERT_EQ_INT(ctx, tblPal4[i].peBlue, workPalet[3][i].peBlue);
+    }
 
     reset_fixture();
     nFadoSeqNum = 55;
@@ -537,13 +596,96 @@ static void test_fade_in_intermediate_and_finish(test_context *ctx) {
     TEST_ASSERT_TRUE(ctx, clrset_palettes[0] == tblPal1);
     TEST_ASSERT_TRUE(ctx, clrset_palettes[3] == tblPal4);
     TEST_ASSERT_EQ_INT(ctx, 55, set_sequence_values[0]);
+}
 
+static void test_fade_in_releases_the_channels_in_turn(test_context *ctx) {
+    static const Sint32 step = FLASH_FADE_FRAMES / 3;
+
+    /* White first: every channel is at FLASH_BRIGHT for the first frames. */
+    for (Sint32 frame = 0; frame < FLASH_WHITE_FRAMES; ++frame) {
+        reset_fixture();
+        nFadoSeqNum = 7;
+        nFadoTime = FLASH_WHITE_FRAMES + FLASH_FADE_FRAMES;
+        nTimerCunt = frame;
+        OEFadeIn();
+        TEST_ASSERT_EQ_INT(ctx, FLASH_BRIGHT, workPalet[0][0].peRed);
+        TEST_ASSERT_EQ_INT(ctx, FLASH_BRIGHT, workPalet[0][0].peGreen);
+        TEST_ASSERT_EQ_INT(ctx, FLASH_BRIGHT, workPalet[0][0].peBlue);
+    }
+
+    /* Then blue returns on its own (white turns yellow)... */
     reset_fixture();
-    nFadoTime = 10;
-    nFadoValu = 32;
-    nTimerCunt = 8;
+    nFadoSeqNum = 7;
+    nFadoTime = FLASH_WHITE_FRAMES + FLASH_FADE_FRAMES;
+    nTimerCunt = FLASH_WHITE_FRAMES + step - 1;
     OEFadeIn();
-    TEST_ASSERT_EQ_INT(ctx, 0, clrset_call_count);
+    TEST_ASSERT_EQ_INT(ctx, tblPal1[0].peBlue, workPalet[0][0].peBlue);
+    TEST_ASSERT_EQ_INT(ctx, FLASH_BRIGHT, workPalet[0][0].peGreen);
+    TEST_ASSERT_EQ_INT(ctx, FLASH_BRIGHT, workPalet[0][0].peRed);
+
+    /* ...green next (yellow turns red)... */
+    nTimerCunt = FLASH_WHITE_FRAMES + step * 2 - 1;
+    OEFadeIn();
+    TEST_ASSERT_EQ_INT(ctx, tblPal1[0].peBlue, workPalet[0][0].peBlue);
+    TEST_ASSERT_EQ_INT(ctx, tblPal1[0].peGreen, workPalet[0][0].peGreen);
+    TEST_ASSERT_EQ_INT(ctx, FLASH_BRIGHT, workPalet[0][0].peRed);
+
+    /* ...and red last, which is the opening's own palette again. */
+    nTimerCunt = FLASH_WHITE_FRAMES + step * 3 - 1;
+    OEFadeIn();
+    TEST_ASSERT_EQ_INT(ctx, tblPal1[0].peBlue, workPalet[0][0].peBlue);
+    TEST_ASSERT_EQ_INT(ctx, tblPal1[0].peGreen, workPalet[0][0].peGreen);
+    TEST_ASSERT_EQ_INT(ctx, tblPal1[0].peRed, workPalet[0][0].peRed);
+}
+
+static void test_flash_sprites_create_copies_outside_the_faded_lines(
+    test_context *ctx) {
+    reset_fixture();
+
+    OEFlashSpritesCreate();
+
+    TEST_ASSERT_EQ_INT(ctx, (Sint32)NUM_FLASH_SPRT, duplicate_call_count);
+    TEST_ASSERT_EQ_INT(ctx, 8, duplicate_index[0]);
+    TEST_ASSERT_EQ_INT(ctx, 11, duplicate_index[3]);
+    TEST_ASSERT_EQ_INT(ctx, 12, duplicate_index[4]);
+    TEST_ASSERT_EQ_INT(ctx, 13, duplicate_index[5]);
+    TEST_ASSERT_EQ_INT(ctx, 23, duplicate_index[6]);
+    for (Sint32 i = 0; i < duplicate_call_count; ++i) {
+        /* Sonic's sprites are cut from the fourth palette line... */
+        TEST_ASSERT_EQ_INT(ctx, 64, duplicate_palette[i]);
+        /* ...and their copies take their colours from outside it. */
+        TEST_ASSERT_EQ_INT(ctx, 144, duplicate_unfaded[i]);
+        TEST_ASSERT_TRUE(ctx, flashSprtBmp[i] ==
+                                  (hmx_bitmap *)&fake_flash_storage[i]);
+    }
+}
+
+static void test_fade_in_draws_sonic_from_the_unfaded_copies(test_context *ctx) {
+    reset_fixture();
+    OEFlashSpritesCreate();
+    for (Sint32 i = 0; i < (Sint32)NUM_FLASH_SPRT; ++i)
+        sprite_handles[flashSprtIndx[i]] = (Uint32)(i + 1);
+    sprite_handles[14] = 40; /* Little Planet flashes with the screen */
+    nFadoSeqNum = 7;
+    nFadoTime = FLASH_WHITE_FRAMES + FLASH_FADE_FRAMES;
+    nTimerCunt = 4;
+
+    OEFadeIn();
+
+    TEST_ASSERT_EQ_INT(ctx, (Sint32)NUM_FLASH_SPRT, bitmap_call_count);
+    for (Sint32 i = 0; i < bitmap_call_count; ++i) {
+        TEST_ASSERT_TRUE(ctx, bitmap_sprites[i] == context.sprites[i + 1]);
+        TEST_ASSERT_TRUE(ctx, bitmap_values[i] ==
+                                  (hmx_bitmap *)&fake_flash_storage[i]);
+    }
+
+    /* The frame that hands over to the title screen uses the real bitmaps. */
+    reset_fixture();
+    nFadoSeqNum = 7;
+    nFadoTime = 5;
+    nTimerCunt = 5;
+    OEFadeIn();
+    TEST_ASSERT_EQ_INT(ctx, 0, bitmap_call_count);
 }
 
 static void test_animation_update_helpers(test_context *ctx) {
@@ -865,6 +1007,9 @@ test_get_next_menu_forward_backward_and_initial(&ctx);
 test_start_open_logo_dark_and_sonic_sequences(&ctx);
 test_fade_out_copies_darkens_and_finishes(&ctx);
 test_fade_in_intermediate_and_finish(&ctx);
+test_fade_in_releases_the_channels_in_turn(&ctx);
+test_flash_sprites_create_copies_outside_the_faded_lines(&ctx);
+test_fade_in_draws_sonic_from_the_unfaded_copies(&ctx);
 test_animation_update_helpers(&ctx);
 test_title_calls_all_update_helpers(&ctx);
 test_menu_update_timeout_cheats_and_selection(&ctx);

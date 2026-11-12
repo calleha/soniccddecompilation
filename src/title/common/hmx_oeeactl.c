@@ -46,6 +46,24 @@ extern Sint32 PRIO_MAX;
 #define PRIO_MAX 60
 #endif
 
+/* Sizes the sprite loaders created the bitmaps with, so that
+   OESprBmpDuplicateUnfaded() can copy one without repeating their padding
+   rules. */
+static Sint32 sprBmpW[64];
+static Sint32 sprBmpH[64];
+/* Copies made by OESprBmpDuplicateUnfaded(), released by OESprBmpDelete(). */
+#define MAX_SPR_UNFADED 16
+static hmx_bitmap *sprUnfadedBmp[MAX_SPR_UNFADED];
+static Sint32 sprUnfadedNum;
+
+static void sprBmpSetSize(Sint32 indx, Sint32 w, Sint32 h) {
+
+    if (indx < 0 || indx >= 64)
+        return;
+    sprBmpW[indx] = w;
+    sprBmpH[indx] = h;
+}
+
 void EAError(Sint32 ret, Sint32 line, char *str) {}
 
 void srfDraw(void) {
@@ -309,6 +327,7 @@ Sint32 ld_load_sprite2(hmx_environment *buffer, char *file,
                 wx = (infoSprtBmp[i].w + 7) / 8 * 8;
                 wy = infoSprtBmp[i].h;
                 bmp = hmx_bitmap_create_module(env, wx, wy);
+                sprBmpSetSize(i, wx, wy);
             }
 
             if (wx & 4) {
@@ -389,6 +408,7 @@ Sint32 ld_load_sprite1(hmx_environment *buffer, char *file,
 
             wx = (s->wx + 7) / 8 * 8;
             bmp = hmx_bitmap_create_module(env, wx, wy);
+            sprBmpSetSize(i, wx, wy);
 
             if (wx & 4) {
                 wx += 4;
@@ -563,6 +583,112 @@ void OESprBmpDelete(void) {
         s_ctx->spr_bitmaps[i] = 0;
         s_ctx->spr_level[i] = 0;
     }
+    for (i = 0; i < sprUnfadedNum; ++i) {
+        hmx_bitmap_release_module(g_env_module, sprUnfadedBmp[i]);
+        sprUnfadedBmp[i] = 0;
+    }
+    sprUnfadedNum = 0;
+}
+
+/* Makes a copy of sprite bitmap `indx` whose colours are moved from the palette
+   line the sprite was extracted with (`palet`) to the entries starting at
+   `unfaded`, so a palette flash that rewrites every line of the working
+   palette leaves the copy's colours alone.
+
+   The art leaves holes in some sprites - Sonic's pupils and nose show the
+   artwork behind his face - which the flash would otherwise show through, so a
+   transparent pixel that the sprite does not open onto its own border is
+   closed here with `unfaded`, the line's first (black) entry, which is what
+   shows through those holes on the title screen.  The copy is released with
+   the other sprite bitmaps by OESprBmpDelete(); 0 means no copy was made. */
+hmx_bitmap *OESprBmpDuplicateUnfaded(Sint32 indx, Sint32 palet,
+                                     Sint32 unfaded) {
+    hmx_bitmap *src_bmp;
+    hmx_bitmap *dst_bmp;
+    Uint8 *pSrc, *pDst, *pOuter;
+    Sint32 *pStack;
+    Sint32 w, h, i, x, y, stack_size;
+
+    if (indx < 0 || indx >= 64 || s_ctx->spr_bitmaps[indx] == 0)
+        return 0;
+
+    w = sprBmpW[indx];
+    h = sprBmpH[indx];
+    if (w <= 0 || h <= 0 || sprUnfadedNum >= MAX_SPR_UNFADED)
+        return 0;
+
+    src_bmp = s_ctx->spr_bitmaps[indx];
+    pSrc = hmx_bitmap_get_scan0_module(src_bmp);
+    dst_bmp = hmx_bitmap_create_module(g_env_module, w, h);
+    pDst = hmx_bitmap_get_scan0_module(dst_bmp);
+    pOuter = sMemAlloc(w * h);
+    pStack = sMemAlloc(w * h * sizeof(Sint32));
+    if (pOuter == 0 || pStack == 0) {
+
+        if (pOuter != 0)
+            sMemFree(pOuter);
+        if (pStack != 0)
+            sMemFree(pStack);
+        hmx_bitmap_release_module(g_env_module, dst_bmp);
+        return 0;
+    }
+
+    for (i = 0; i < w * h; ++i) {
+        if (pSrc[i] == 255)
+            pDst[i] = 255;
+        else
+            pDst[i] = (Uint8)(pSrc[i] - palet + unfaded);
+        pOuter[i] = 0;
+    }
+
+    /* Mark the transparent pixels that can be reached from the border. */
+    stack_size = 0;
+    for (y = 0; y < h; ++y) {
+        for (x = 0; x < w; ++x) {
+            if (x != 0 && x != w - 1 && y != 0 && y != h - 1)
+                continue;
+            i = y * w + x;
+            if (pSrc[i] == 255 && pOuter[i] == 0) {
+
+                pOuter[i] = 1;
+                pStack[stack_size++] = i;
+            }
+        }
+    }
+    while (stack_size > 0) {
+        Sint32 p = pStack[--stack_size];
+        Sint32 px = p % w;
+        Sint32 py = p / w;
+        Sint32 neighbours[4];
+        Sint32 n;
+
+        neighbours[0] = px > 0 ? p - 1 : -1;
+        neighbours[1] = px < w - 1 ? p + 1 : -1;
+        neighbours[2] = py > 0 ? p - w : -1;
+        neighbours[3] = py < h - 1 ? p + w : -1;
+
+        for (n = 0; n < 4; ++n) {
+            Sint32 q = neighbours[n];
+            if (q < 0 || pOuter[q] != 0 || pSrc[q] != 255)
+                continue;
+            pOuter[q] = 1;
+            pStack[stack_size++] = q;
+        }
+    }
+
+    /* Close the holes that are left. */
+    for (i = 0; i < w * h; ++i) {
+        if (pDst[i] == 255 && pOuter[i] == 0)
+            pDst[i] = (Uint8)unfaded;
+    }
+
+    sMemFree(pOuter);
+    sMemFree(pStack);
+
+    hmx_bitmap_set_transparency_module(dst_bmp, 255);
+    sprUnfadedBmp[sprUnfadedNum++] = dst_bmp;
+
+    return dst_bmp;
 }
 
 Sint32 OESprCreate(Uint16 timing) {

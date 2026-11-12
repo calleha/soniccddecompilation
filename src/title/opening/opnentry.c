@@ -204,6 +204,7 @@ void DLLInit(engine_dll *lpDllIn, char ***pBufTbl, void **pFuncTbl) {
     OEClrset(tblPal4, 3);
 
     OECreateEA();
+    OEFlashSpritesCreate();
     nSequenceNum = 1;
     nTimerCunt = 0;
 }

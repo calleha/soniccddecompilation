@@ -22,6 +22,14 @@ PALETTEENTRY colorwk4[64];
 int_union hscrollbuff[256];
 Sint32 fade_flag;
 
+/* The title screen's intro flash rewrites all four palette lines, so the
+   opening draws Sonic from copies of his sprites whose colours live at palette
+   entries 144-159 instead (see OEFlashSpritesCreate() in
+   src/title/opening/opndo.c).  Those entries hold the fourth palette line as
+   the title module left it when it was loaded, i.e. Sonic's own colours; they
+   are saved here because line 3 itself is what the flash overwrites. */
+static PALETTEENTRY titleUnfadedPalette[16];
+
 static SDL_Palette *sharedPalette;
 static SDL_Surface *framebuffer;
 static SDL_Surface *presentSurface;
@@ -990,9 +998,18 @@ void Graphics_Shutdown(void) {
 	sharedPalette = NULL;
 }
 
+void Graphics_TitleSnapshotUnfadedPalette(void) {
+	/* Called right after a title module has been initialised, while its
+	   palette lines are the ones it set up for itself.  The opening keeps
+	   Sonic's colours (its fourth line) out of reach of the intro flash this
+	   way; see titleUnfadedPalette above. */
+	memcpy(titleUnfadedPalette, &colorwk[48], sizeof(titleUnfadedPalette));
+}
+
 static void UpdatePalette(void) {
 	static PALETTEENTRY lastColorwk[64];
 	static PALETTEENTRY lastColorwk3[64];
+	static PALETTEENTRY lastTitleUnfaded[16];
 	static int paletteInitialized;
 	static bool lastSpecialStageMode;
 	static bool lastTitleMode;
@@ -1002,11 +1019,14 @@ static void UpdatePalette(void) {
 	    lastSpecialStageMode == specialStageMode &&
 	    lastTitleMode == titleMode &&
 	    memcmp(colorwk, lastColorwk, sizeof(colorwk)) == 0 &&
-	    memcmp(colorwk3, lastColorwk3, sizeof(colorwk3)) == 0) {
+	    memcmp(colorwk3, lastColorwk3, sizeof(colorwk3)) == 0 &&
+	    memcmp(titleUnfadedPalette, lastTitleUnfaded,
+	           sizeof(titleUnfadedPalette)) == 0) {
 		return;
 	}
 	memcpy(lastColorwk, colorwk, sizeof(colorwk));
 	memcpy(lastColorwk3, colorwk3, sizeof(colorwk3));
+	memcpy(lastTitleUnfaded, titleUnfadedPalette, sizeof(titleUnfadedPalette));
 	lastSpecialStageMode = specialStageMode;
 	lastTitleMode = titleMode;
 	for (int i = 0; i < SDL_arraysize(colors); i++) {
@@ -1026,6 +1046,15 @@ static void UpdatePalette(void) {
 			colors[80 + i].g = colorwk[i].peGreen;
 			colors[80 + i].b = colorwk[i].peBlue;
 			colors[80 + i].a = 255;
+		}
+		/* The opening draws Sonic from copies of his sprites whose
+		   colours are kept here while the flash rewrites line 3 (see
+		   titleUnfadedPalette above). */
+		for (int i = 0; i < SDL_arraysize(titleUnfadedPalette); i++) {
+			colors[144 + i].r = titleUnfadedPalette[i].peRed;
+			colors[144 + i].g = titleUnfadedPalette[i].peGreen;
+			colors[144 + i].b = titleUnfadedPalette[i].peBlue;
+			colors[144 + i].a = 255;
 		}
 	} else {
 		for (int i = 0; i < SDL_arraysize(colorwk); i++) {
