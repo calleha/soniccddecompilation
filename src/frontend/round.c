@@ -35,6 +35,10 @@ static int stageIdInitialized;
    DAT_0042570c, set from the "?3C" stage id when a stage is loaded. */
 static int roundStageIsGoodFuture;
 
+/* Set when the stage came from the stage select: clearing it goes back to the
+   title instead of the next act (gbUsedStageSelect in the reference). */
+static int roundStageSelectUsed;
+
 static void Round_ReadStageString(char *str, size_t strSize) {
     Uint8 round;
     Uint8 zone;
@@ -254,7 +258,7 @@ static int Round_LoadStagePath(const char *path) {
     DLL_meminit(memoryTbl, functionTbl);
     fade_flag = 0;
     if (SetDebugFlag) {
-        SetDebugFlag(0);
+        SetDebugFlag(Title_DebugFlag());
     }
 
     if (!Round_LoadGraphics()) {
@@ -306,6 +310,17 @@ int Round_LoadStageByName(const char *stageId) {
 }
 
 static frontend_state Round_LoadNextStage(void) {
+    /* The reference drops straight back to the opening when the stage came from
+       the stage select, before it looks at anything else. */
+    if (roundStageSelectUsed) {
+        roundStageSelectUsed = 0;
+        Round_Unload();
+        if (!Title_LoadDLL("bin/libopening.so")) {
+            return FRONTEND_STATE_EXIT;
+        }
+        return FRONTEND_STATE_TITLE;
+    }
+
     /* WINEXE/WINMAIN.C credits a zone's good future when the next zone's act 1
        starts, if the act 3 that was just played ran in a good future (the
        reference keeps this in DAT_0042570c, set from the "?3C" stage id at
@@ -341,6 +356,8 @@ static frontend_state Round_LoadNextStage(void) {
     }
     return FRONTEND_STATE_ROUND;
 }
+
+void Round_MarkStageSelectUsed(void) { roundStageSelectUsed = 1; }
 
 static frontend_state Round_HandleClear(void) {
     gameInfo.plflag = 0;

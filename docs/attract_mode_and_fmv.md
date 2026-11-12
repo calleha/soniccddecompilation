@@ -102,11 +102,12 @@ decides which ending to show and plays it as a two-part movie:
 starts, `DAT_0042570c` in the original - here a flag set from the "?3C" stage
 id at load time - says whether the act 3 just played ran in a good future.
 
-`src/frontend/ending.c` runs that sequence, and after the last part the title
-sequence starts again. One difference from the reference: the "THANKS" message
-screen that follows the movies there is not shown yet, because the thanks module
-(`src/title/thanks`) still lacks its entry point and its own draw path in the
-port.
+`src/frontend/ending.c` runs that sequence. After the movies the thanks module
+takes over (see `docs/title_modules.md`): it shows the "PRESENTED BY SEGA" line
+and, for the good ending only, the Greatest Player screen, then the title
+sequence starts again. One difference from the reference: the "TRY AGAIN" /
+"YOU'RE TOO COOL!" line is not drawn again there, because the ending cutscenes
+this port plays already end with it.
 
 ## Trying it out
 

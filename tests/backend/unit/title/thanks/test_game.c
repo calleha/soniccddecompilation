@@ -1,3 +1,10 @@
+/* <stdlib.h> declares POSIX random(); the decompiled thanks headers declare
+   the game's own Sint32 random(void).  Parse stdlib first, then rename the game
+   symbol inside this harness so the two can coexist. */
+#include <stdlib.h>
+
+#define random game_random
+
 #include <string.h>
 
 #include "support/test_runner.h"
@@ -519,7 +526,7 @@ static void test_ending_mes_color_copies_literal_palette(test_context *ctx) {
     TEST_ASSERT_EQ_INT(ctx, 0, palette0[63].peBlue);
 }
 
-static void test_ending_mes_type_one_waits_for_input_then_initializes_vdp(
+static void test_ending_mes_type_one_goes_straight_to_presented_by_sega(
     test_context *ctx) {
     game_info keep_work;
 
@@ -528,18 +535,13 @@ static void test_ending_mes_type_one_waits_for_input_then_initializes_vdp(
     lpKeepWork = &keep_work;
     keep_work.EndingMesType = 1;
 
+    /* The port starts on "PRESENTED BY SEGA" (sprite 77): the "YOU'RE TOO
+       COOL!" line (sprite 76) is already in the ending cutscene, so the ticks
+       that would draw it are skipped. */
     TEST_ASSERT_EQ_INT(ctx, 1, EndingMes());
     TEST_ASSERT_EQ_INT(ctx, 1, easprset_call_count);
-    TEST_ASSERT_EQ_INT(ctx, 76, easprset_index[0]);
-
-    gEndingMesTimer = 1;
-    EndingMes();
-    TEST_ASSERT_EQ_INT(ctx, 1, easprset_call_count);
-
-    gEndingMesTimer = 179;
-    EndingMes();
-    TEST_ASSERT_EQ_INT(ctx, 2, easprset_call_count);
-    TEST_ASSERT_EQ_INT(ctx, 77, easprset_index[1]);
+    TEST_ASSERT_EQ_INT(ctx, 77, easprset_index[0]);
+    TEST_ASSERT_EQ_INT(ctx, 180, gEndingMesTimer);
 
     gEndingMesTimer = 359;
     swdata1.b.l = 0;
@@ -583,18 +585,11 @@ static void test_ending_mes_type_two_sprites_and_wait_without_input(
     lpKeepWork = &keep_work;
     keep_work.EndingMesType = 2;
 
+    /* Type 2 starts on "PRESENTED BY SEGA" as well - "TRY AGAIN" (sprite 75)
+       is part of the cutscene the port plays. */
     TEST_ASSERT_EQ_INT(ctx, 1, EndingMes());
     TEST_ASSERT_EQ_INT(ctx, 1, easprset_call_count);
-    TEST_ASSERT_EQ_INT(ctx, 75, easprset_index[0]);
-
-    gEndingMesTimer = 1;
-    EndingMes();
-    TEST_ASSERT_EQ_INT(ctx, 1, easprset_call_count);
-
-    gEndingMesTimer = 179;
-    EndingMes();
-    TEST_ASSERT_EQ_INT(ctx, 2, easprset_call_count);
-    TEST_ASSERT_EQ_INT(ctx, 77, easprset_index[1]);
+    TEST_ASSERT_EQ_INT(ctx, 77, easprset_index[0]);
 
     gEndingMesTimer = 359;
     swdata1.b.l = 0;
@@ -649,7 +644,7 @@ test_v_int_updates_animal_timers_palettes_and_quit(&ctx);
 test_put_ascii_draws_three_or_four_cell_glyphs(&ctx);
 test_soundset_skips_171_and_maps_other_requests(&ctx);
 test_ending_mes_color_copies_literal_palette(&ctx);
-test_ending_mes_type_one_waits_for_input_then_initializes_vdp(&ctx);
+test_ending_mes_type_one_goes_straight_to_presented_by_sega(&ctx);
 test_ending_mes_type_two_blacks_palette_on_input(&ctx);
 test_ending_mes_type_two_sprites_and_wait_without_input(&ctx);
 test_game_return_paths(&ctx);

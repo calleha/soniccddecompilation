@@ -94,9 +94,10 @@ void *functionTbl[64] = {
     (void *)hmx_ddagrid_release,
     (void *)hmx_ddagrid_set_scan,
     (void *)hmx_ddagrid_set_tile,
-    /* The movie DLLs (TITLE/AVIOPEN, TITLE/AVIGOOD) skip one slot and then take
-       the three movie hooks, so the order here is part of the ABI. */
-    0,
+    /* Slot 54 is the per pad status getter the planet module reads
+       (sPeriPadGet); the movie DLLs skip it and then take the three movie
+       hooks, so the order here is part of the ABI. */
+    (void *)FrontendPadGet,
     (void *)Movie_Play,
     (void *)Movie_Stop,
     (void *)Movie_Stat,

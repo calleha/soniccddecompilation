@@ -28,7 +28,9 @@ static void cd_call(void);
 static char *ScrAMapFileName[3] = {"../TITLE/PLANET/MAP/LP.MAP",
                                    "../TITLE/PLANET/MAP/LPG.MAP",
                                    "../TITLE/PLANET/MAP/LPB.MAP"};
-static char ScrBMapFileName[26] = "../TITLE/PLANET/MAP/LPBS.MAP";
+/* 26 is what the reference declares for "TITLE\PLANET\MAP\LPBS.MAP"; the port
+   needs the "../" prefix, so the array has to be longer or the name is cut. */
+static char ScrBMapFileName[32] = "../TITLE/PLANET/MAP/LPBS.MAP";
 static Uint32 bGameInit = 1;
 extern PALETTEENTRY init_col[];
 extern Sint16 *funka_map_tbl[];

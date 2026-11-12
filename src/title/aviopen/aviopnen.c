@@ -8,10 +8,12 @@
 hmx_environment *g_env_module;
 hmx_environment *g_loader_module;
 #if defined(AVIOPEN)
-char fileName[26] = "../TITLE/BMP/OPNAVI/OPWP.BMP";
+/* The reference sizes this for "TITLE\\BMP\\OPNAVI\\OPWP.BMP"; the port's
+   "../" prefix needs one byte more for the terminator. */
+char fileName[29] = "../TITLE/BMP/OPNAVI/OPWP.BMP";
 #endif
 #if defined(AVIPEN)
-char fileName[27] = "./TITLE/BMP/OPNAVI/PENBG.BMP";
+char fileName[29] = "./TITLE/BMP/OPNAVI/PENBG.BMP";
 #endif
 Sint32 nTimerCunt;
 Uint16 nSequenceNum;

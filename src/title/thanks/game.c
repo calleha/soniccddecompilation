@@ -361,6 +361,13 @@ Sint32 EndingMes(void) {
     Sint32 i;
 
     ++gEndingMesTimer;
+    /* The ending cutscenes this port plays already end with the "TRY AGAIN" /
+       "YOU'RE TOO COOL!" line (sprites 75 and 76), so the ticks that would draw
+       it again are skipped and the screen starts on "PRESENTED BY SEGA"
+       (sprite 77).  The reference draws both, one after the other. */
+    if (gEndingMesTimer < 180) {
+        gEndingMesTimer = 180;
+    }
     if (gEndingMesTimer > 360) {
         gEndingMesTimer = 360;
         return 0;

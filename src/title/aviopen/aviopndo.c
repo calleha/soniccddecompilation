@@ -2,10 +2,12 @@
 #include "aviopndo.h"
 
 #if defined(AVIOPEN)
-static char szAVIFile[18] = "../TITLE/AVI/OPN.AVI";
+/* Sized for the reference's "TITLE\\AVI\\OPN.AVI" plus the port's "../"
+   prefix and the terminator. */
+static char szAVIFile[24] = "../TITLE/AVI/OPN.AVI";
 #endif
 #if defined(AVIPEN)
-static char szAVIFile[21] = "../TITLE/AVI/PENCIL.AVI";
+static char szAVIFile[27] = "../TITLE/AVI/PENCIL.AVI";
 #endif
 static Uint32 bAVIStart;
 extern Sint32 (*sMoviePlay)(Sint32);

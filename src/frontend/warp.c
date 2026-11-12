@@ -5,6 +5,7 @@
 #include "globals.h"
 #include "graphics.h"
 #include "round.h"
+#include "title.h"
 #include "warp.h"
 
 #define WARP_SPRITE_COUNT 700
@@ -22,7 +23,7 @@ int Warp_LoadDLL(const char *path) {
     DLL_meminit(memoryTbl, functionTbl);
     fade_flag = 0;
     if (SetDebugFlag) {
-        SetDebugFlag(0);
+        SetDebugFlag(Title_DebugFlag());
     }
 
     if (!Graphics_LoadWarp((bmp_info *)gameInfo.pSprBmp, WARP_SPRITE_COUNT)) {

@@ -12,11 +12,14 @@
 #include "graphics.h"
 #include "hmx.h"
 #include "movie.h"
+#include "movie_play.h"
+#include "planet.h"
 #include "round.h"
 #include "score.h"
 #include "sound.h"
 #include "special.h"
 #include "ta.h"
+#include "thanks.h"
 #include "title.h"
 #include "warp.h"
 #include "utilities.h"
@@ -45,7 +48,10 @@ typedef struct {
 
 static frontend_pad_status padStatus;
 
-static frontend_pad_status *FrontendPadGet(Uint32 padNo) {
+/* Handed to the modules through functionTbl slot 54 (the planet module's
+   sPeriPadGet).  This port has a single pad, so both numbers give the same
+   struct. */
+void *FrontendPadGet(Uint32 padNo) {
     (void)padNo;
     return &padStatus;
 }
@@ -146,6 +152,63 @@ int main(int argc, char **argv) {
         }
         Ending_Begin();
         state = FRONTEND_STATE_ENDING;
+    } else if (argc > 1 && strcmp(argv[1], "planet") == 0) {
+        /* D.A. Garden, the Little Planet screen. */
+        if (!Title_LoadDLL("bin/libopening.so")) {
+            return -1;
+        }
+        if (!Planet_Load()) {
+            return -1;
+        }
+        state = FRONTEND_STATE_PLANET;
+    } else if (argc > 1 && strcmp(argv[1], "thanks") == 0) {
+        /* The ending message screen: `thanks good` (type 1) or `thanks bad`
+           (type 2); no argument uses the current save like the ending does. */
+        if (!Title_LoadDLL("bin/libopening.so")) {
+            return -1;
+        }
+        gameInfo.EndingMesType = 1;
+        if (argc > 2) {
+            if (strcmp(argv[2], "bad") == 0) {
+                gameInfo.EndingMesType = 2;
+            } else if (strcmp(argv[2], "good") != 0) {
+                return -1;
+            }
+        }
+        if (!Thanks_Load()) {
+            return -1;
+        }
+        state = FRONTEND_STATE_THANKS;
+    } else if (argc > 1 && strcmp(argv[1], "movie") == 0) {
+        /* One movie by id (see movie.h): `movie 1` is the pencil test. */
+        Sint32 movieId = 0;
+
+        if (!Title_LoadDLL("bin/libopening.so")) {
+            return -1;
+        }
+        if (argc > 2) {
+            char *end = NULL;
+            unsigned long id = strtoul(argv[2], &end, 10);
+            if (!end || *end != '\0') {
+                return -1;
+            }
+            movieId = (Sint32)id;
+        }
+        MoviePlay_Begin(movieId, 0);
+        state = FRONTEND_STATE_MOVIE;
+    } else if (argc > 1 && strcmp(argv[1], "menu") == 0) {
+        /* Loads a menu module directly: savedata, soundtst, stagetst, besttime,
+           visualmd. */
+        char path[64];
+
+        if (argc < 3) {
+            return -1;
+        }
+        snprintf(path, sizeof(path), "bin/lib%s.so", argv[2]);
+        if (!Title_LoadDLL(path)) {
+            return -1;
+        }
+        state = FRONTEND_STATE_TITLE;
     } else {
         if (!Title_LoadDLL("bin/libopening.so")) {
             return -1;
@@ -211,6 +274,15 @@ int main(int argc, char **argv) {
         case FRONTEND_STATE_ENDING:
             state = Ending_Run(pressed);
             break;
+        case FRONTEND_STATE_PLANET:
+            state = Planet_Run(renderer);
+            break;
+        case FRONTEND_STATE_THANKS:
+            state = Thanks_Run(renderer);
+            break;
+        case FRONTEND_STATE_MOVIE:
+            state = MoviePlay_Run(pressed);
+            break;
         case FRONTEND_STATE_TIME_ATTACK:
             state = TimeAttack_Run(renderer);
             break;
@@ -240,6 +312,13 @@ int main(int argc, char **argv) {
         Movie_Shutdown();
         Title_Unload();
     } else if (state == FRONTEND_STATE_ENDING) {
+        Movie_Shutdown();
+        Title_Unload();
+    } else if (state == FRONTEND_STATE_PLANET) {
+        Planet_Unload();
+    } else if (state == FRONTEND_STATE_THANKS) {
+        Thanks_Unload();
+    } else if (state == FRONTEND_STATE_MOVIE) {
         Movie_Shutdown();
         Title_Unload();
     }

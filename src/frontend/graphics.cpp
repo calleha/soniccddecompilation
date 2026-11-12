@@ -873,8 +873,7 @@ int Graphics_LoadWarp(bmp_info *spriteInfo, int spriteInfoCount) {
 	return 1;
 }
 
-int Graphics_LoadPlanet(const Uint16 *rotateMap, bmp_info *spriteInfo, int spriteInfoCount) {
-	planetMode = true;
+int Graphics_LoadPlanet(const Uint16 *rotateMap, bmp_info *spriteInfo, int spriteInfoCount) {	planetMode = true;
 	specialStageMode = false;
 	specialClearMode = false;
 	Hmx_SetActive(0);
@@ -888,6 +887,25 @@ int Graphics_LoadPlanet(const Uint16 *rotateMap, bmp_info *spriteInfo, int sprit
 	}
 	Graphics_SetPlanetRotateGrid(rotateMap);
 	if (!Graphics_LoadSprites("../TITLE/PLANET/CG/SCMPLP.CM_", spriteInfo, spriteInfoCount)) {
+		return 0;
+	}
+	return 1;
+}
+
+/* The thanks / ending message screen (src/title/thanks) draws into the two
+   plane A grids and sprites like a stage, but it has no background plane of its
+   own. */
+int Graphics_LoadThanks(bmp_info *spriteInfo, int spriteInfoCount) {
+	planetMode = false;
+	specialStageMode = false;
+	specialClearMode = false;
+	Hmx_SetActive(0);
+	memset(tileGrids, 0, sizeof(tileGrids));
+	ClrSpriteDebug();
+	if (!Graphics_LoadTiles("../TITLE/THANKS/CG/SCR_A.CM_")) {
+		return 0;
+	}
+	if (!Graphics_LoadSprites("../TITLE/THANKS/CG/SCMPTH.CM_", spriteInfo, spriteInfoCount)) {
 		return 0;
 	}
 	return 1;
@@ -1398,6 +1416,16 @@ static void PresentFrame(SDL_Renderer *renderer) {
 	SDL_UnlockTexture(presentTexture);
 	SDL_RenderTexture(renderer, presentTexture, NULL, NULL);
 	SDL_RenderPresent(renderer);
+	/* FRAME_DUMP=<frame number> saves that frame as /tmp/frame.bmp - handy for
+	   checking a screen from a headless run. */
+	{
+		static Uint32 frameCount;
+		const char *dump = SDL_getenv("FRAME_DUMP");
+		if (dump && ++frameCount == (Uint32)SDL_atoi(dump)) {
+			SDL_SaveBMP(presentSurface, "/tmp/frame.bmp");
+			SDL_Log("dumped frame %u", frameCount);
+		}
+	}
 }
 
 void Graphics_Draw(SDL_Renderer *renderer, Sint32 scraHPosiw, Sint32 scrbHPosiw, Sint32 vscroll, const game_info *info) {
@@ -1442,6 +1470,20 @@ void Graphics_DrawPlanet(SDL_Renderer *renderer, const game_info *info) {
 	DrawGridPlane(framebuffer, 2, 0, 0);
 	DrawGridPlane(framebuffer, 1, 0, 0);
 	DrawPlanetRotateGrid(framebuffer, info);
+	DrawSprites(framebuffer, false);
+	DrawGridPlane(framebuffer, 0, 0, 0);
+	DrawSprites(framebuffer, true);
+	PresentFrame(renderer);
+}
+
+void Graphics_DrawThanks(SDL_Renderer *renderer, const game_info *info) {
+	(void)info;
+	UpdatePalette();
+	SDL_FillSurfaceRect(framebuffer, NULL, 16);
+	/* cgmwrt_b() fills the base-1 grid (plane 2), cgmwrt_a() the two plane A
+	   halves; sprites sit between the low and the high half like in a stage. */
+	DrawGridPlane(framebuffer, 2, 0, 0);
+	DrawGridPlane(framebuffer, 1, 0, 0);
 	DrawSprites(framebuffer, false);
 	DrawGridPlane(framebuffer, 0, 0, 0);
 	DrawSprites(framebuffer, true);

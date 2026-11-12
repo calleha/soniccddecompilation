@@ -4791,6 +4791,12 @@ add_executable(frontend
   src/frontend/dll.h
   src/frontend/ending.c
   src/frontend/ending.h
+  src/frontend/movie_play.c
+  src/frontend/movie_play.h
+  src/frontend/planet.c
+  src/frontend/planet.h
+  src/frontend/thanks.c
+  src/frontend/thanks.h
   src/frontend/file.c
   src/frontend/file.h
   src/frontend/frontend_state.h

@@ -61,7 +61,7 @@ int Special_LoadDLL(const char *path) {
     DLL_meminit(memoryTbl, functionTbl);
     fade_flag = 0;
     if (SetDebugFlag) {
-        SetDebugFlag(0);
+        SetDebugFlag(Title_DebugFlag());
     }
 
     if (!Graphics_LoadSpecialStage(gameInfo.stagenm, gameInfo.sm_adr0, (bmp_info *)gameInfo.pSprBmp, SPECIAL_SPRITE_COUNT)) {

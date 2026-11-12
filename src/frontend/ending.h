@@ -20,7 +20,11 @@ extern "C" {
    or every good future was collected, bad otherwise. */
 void Ending_Begin(void);
 
-/* Runs one frame; returns FRONTEND_STATE_ENDING until the movies are over. */
+/* Plays one specific ending (1 = good, 0 = bad) and then its message screen. */
+void Ending_Play(int good);
+
+/* Runs one frame; returns FRONTEND_STATE_ENDING until the movies are over, then
+   hands over to the thanks message screen. */
 frontend_state Ending_Run(Uint8 pressed);
 
 #ifdef __cplusplus

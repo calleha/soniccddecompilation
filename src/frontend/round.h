@@ -16,6 +16,10 @@ int Round_LoadStageByName(const char *stageId);
 frontend_state Round_Run(SDL_Renderer *renderer);
 void Round_Unload(void);
 
+/* Marks that the running stage came from the stage select, so clearing it goes
+   back to the title (gbUsedStageSelect in the reference). */
+void Round_MarkStageSelectUsed(void);
+
 #ifdef __cplusplus
 }
 #endif
