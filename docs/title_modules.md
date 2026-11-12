@@ -184,3 +184,16 @@ The port has the 1993 behaviour, with the total effect kept at the reference's
 The effect is 3 white frames plus 18 fade frames, i.e. the same 21 frames as
 the reference's fade; the fork in `soniccdrespinned` spreads the same idea over
 4 + 21.
+
+## Title screen arm blink (CD93 parity)
+
+The reference's `OEUpdateHand()` guards its first pose with `if (num != 0)`, so
+Sonic's raised hand is drawn on every title frame except the very first one,
+where it disappears - the arm blinks just before the finger wave starts.
+`OEUpdateHand()` in `src/title/opening/opndo.c` now draws that pose like the
+rest (the wave timing is untouched).
+
+Checked the way the fork did, by counting the glove's white pixels in the hand
+box (x 161-220, y 58-121) per frame of a headless capture of the transition: the
+first title frame had 172 instead of 305 before the fix, and 305 on every frame
+after it.

@@ -690,14 +690,19 @@ static void test_fade_in_draws_sonic_from_the_unfaded_copies(test_context *ctx) 
 
 static void test_animation_update_helpers(test_context *ctx) {
     reset_fixture();
+    /* The first title frame draws the pose too: the reference's `num != 0`
+       guard left Sonic without his raised arm for that one frame. */
     OEUpdateHand();
-    TEST_ASSERT_EQ_INT(ctx, 0, spr_create_call_count);
+    TEST_ASSERT_EQ_INT(ctx, 1, spr_create_call_count);
+    TEST_ASSERT_EQ_INT(ctx, 11, spr_create_values[0]);
     nTimerCunt = 1;
     OEUpdateHand();
-    TEST_ASSERT_EQ_INT(ctx, 11, spr_create_values[0]);
+    TEST_ASSERT_EQ_INT(ctx, 2, spr_create_call_count);
+    TEST_ASSERT_EQ_INT(ctx, 11, spr_create_values[1]);
     nTimerCunt = 18;
     OEUpdateHand();
-    TEST_ASSERT_EQ_INT(ctx, 10, spr_create_values[1]);
+    TEST_ASSERT_EQ_INT(ctx, 3, spr_create_call_count);
+    TEST_ASSERT_EQ_INT(ctx, 10, spr_create_values[2]);
 
     reset_fixture();
     OEUpdateMayu();

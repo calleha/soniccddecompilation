@@ -127,8 +127,11 @@ static void OEUpdateHand(void) {
     }
     if ((Uint32)num < 16 && nTimerCunt == timeHand[num].time) {
 
-        if (num != 0)
-            OESprCreate(timeHand[num].timingPatNo);
+        /* The reference skips the first pose here (its `num != 0` guard), which
+           drops Sonic's raised hand for the one frame the title screen starts
+           on, so the arm blinks just before the finger wave begins.  Draw it
+           like the rest - the wave timing is unchanged. */
+        OESprCreate(timeHand[num].timingPatNo);
         ++num;
     } else if (num != 0)
         OESprCreate(timeHand[num - 1].timingPatNo);
