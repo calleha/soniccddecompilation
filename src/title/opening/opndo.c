@@ -58,6 +58,15 @@ extern grid_bmp infoGridBmp[];
 extern void (*hmx_ddagrid_set_scan_module)(hmx_ddagrid *, Sint32, Sint32,
                                            Sint32, Sint32, Sint32);
 extern score_data crntScorData;
+extern void (*hmx_background_set_background_module)(hmx_background *, Sint32);
+
+/* tblPal4[1] is the darker of the two backdrop blues the title art uses
+   (0, 0, 96); in the title mode palette it sits at index 65 (lpColorwk[49], as
+   OEClrset() copies tblPal4 to the fourth palette line).  The backdrop only
+   starts with the title sequence - the Sega logo (2), the dark (3) and the
+   Sonic (5) sequences clear to transparent black, as in the 1993 release. */
+#define OPENING_BACKGROUND_COLOUR 65
+#define OPENING_BACKGROUND_SEQUENCE 6
 extern Uint32 selectIndx;
 extern Uint16 swData1;
 extern PALETTEENTRY tblPal2[];
@@ -664,6 +673,9 @@ void OETitleSta(void) {
     OEAllSprDelete();
     if (nTimerCunt == 0) {
 
+        /* The title screen brings the blue backdrop in (see OEOpenSta). */
+        if (*infoGridBmp[0].lphGrid == 0)
+            OEGridCreate(0);
         OEGridCreate(1);
         bDrawDisable = 1;
         nFadoTime = 21;
@@ -805,7 +817,10 @@ void OEFadeIn(void) {
 void OEOpenSta(void) {
     if (nTimerCunt == 0) {
 
-        OEGridCreate(0);
+        /* The blue backdrop (grid 0) belongs to the title screen and is built
+           there instead, so the Sega logo, the dark and the Sonic sequences are
+           drawn over the transparent black clear colour - the 1993 release
+           only brings the blue in once the title screen is up. */
         if (bFirstTitle != 0)
             OESetSequenceNum(2);
         else

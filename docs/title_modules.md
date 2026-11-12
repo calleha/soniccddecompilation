@@ -118,3 +118,24 @@ reachable by playing:
 
 Setting `FRAME_DUMP=<n>` saves the n-th presented frame to `/tmp/frame.bmp`,
 which is how these screens were checked from headless runs.
+
+## Opening / title backdrop colour (CD93 parity)
+
+The 1993 release keeps the screen transparent black through the Sega logo, the
+dark and the Sonic appearance, and only puts the title screen's dark blue
+backdrop behind the title itself; the 1996 version this decompilation follows
+draws the blue from the start.
+
+The port gets the CD93 behaviour by when it builds the backdrop: `TITLE/OPENING`
+grid 0 is the flat background tile (`hBmpBack`), and `src/title/opening/opndo.c`
+now creates it in `OETitleSta()` (sequence 6, the title screen) instead of in
+`OEOpenSta()`.  Until then `srfDraw()` skips the missing grid and the black
+clear colour (`hmxBackground.color`, palette index 0) shows through.  The blue
+itself is the model's (0, 0, 96) - `OPN_tblPal4[1]`, the palette entry the fork
+uses - and it fades in with the title palette because the fade-in starts
+drawing as soon as it runs.
+
+Note that the colour is *drawn* content, not the clear colour: forcing
+`hmxBackground.color` to another palette entry while running changes nothing on
+screen, which is why this needed a module-side change rather than the fork's
+`clear_screen_colour()` approach.
