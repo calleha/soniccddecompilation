@@ -159,9 +159,12 @@ static void DrawHmxGrid(SDL_Surface *target, const hmx_grid *grid) {
 				continue;
 			}
 			srcX = PositiveMod(srcX, sourceWidth);
-			if (srcY < 0 || srcY >= sourceHeight) {
-				continue;
-			}
+			/* The tile map wraps on both axes: the time attack panel grid
+			   scrolls vertically during the act switch (with a view taller
+			   than the map), so a row below the map's last one continues at
+			   the top instead of leaving a hole that the next layer would
+			   show through. */
+			srcY = PositiveMod(srcY, sourceHeight);
 			Sint32 tileX = srcX / grid->tileWidth;
 			Sint32 tileY = srcY / grid->tileHeight;
 			hmx_bitmap *tile = grid->tiles[tileY * grid->columns + tileX];
@@ -201,7 +204,12 @@ static void DrawHmxDdaGrid(SDL_Surface *target, const hmx_ddagrid *dda) {
 			Sint32 srcX = (scan.startX + scan.deltaX * screenX) >> 16;
 			Sint32 srcY = (scan.startY + scan.deltaY * screenX) >> 16;
 			srcX = PositiveMod(srcX, sourceWidth);
-			srcY = PositiveMod(srcY, sourceHeight);
+			/* The rotating grids (special stages, Little Planet) keep their
+			   scan coordinates inside the map, so nothing is repeated here -
+			   only the plain grid path below wraps on both axes. */
+			if (srcY < 0 || srcY >= sourceHeight) {
+				continue;
+			}
 			Sint32 tileX = srcX / grid->tileWidth;
 			Sint32 tileY = srcY / grid->tileHeight;
 			hmx_bitmap *tile = grid->tiles[tileY * grid->columns + tileX];

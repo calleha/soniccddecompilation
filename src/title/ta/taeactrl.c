@@ -758,6 +758,7 @@ void DeleteEA(void) {
 void DrawTA(void) {
     Sint32 i;
 
+
     GridRect[1].x = GridRect[3].x;
     GridRect[0].x = GridRect[2].x;
     GridRect[0].y = GridRect[2].y;

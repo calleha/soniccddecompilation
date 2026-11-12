@@ -1696,7 +1696,9 @@ tests.
 
 ## R3 act 1 (R31A/R31D): foreground tiles drawn in the wrong layer
 
-- Reported from gameplay with screenshots: a foreground tile is missing (the
+- Status: **not reproduced**, deprioritised. Kept as a record of what was
+  checked, in case it turns up again with a reproducible spot.
+- Reported once from gameplay with screenshots: a foreground tile missing (the
   background shows through) in `R31A` and `R31D`.
 - Ruled out so far:
   - the tile sets are complete: `TCMP31A.CM_` (698 entries) and `TCMP31D.CM_`
@@ -1729,3 +1731,22 @@ tests.
   boost never applied and the recorded demo's later inputs missed.
 - Fixed by sharing the player work area through `src/special/pls_work.h`.
   After the fix the SPECIAL1 demo destroys all six UFOs instead of two.
+
+## Time attack act switch showed the round list behind the sliding panel
+
+- Reported from gameplay: after picking a round, the act panel slides up/down
+  when switching acts; during the slide the panel disappeared and the round
+  list behind it showed through until the animation finished.
+- Cause: `src/frontend/hmx.cpp` `DrawHmxGrid()` wrapped the source X inside the
+  tile map but dropped rows past the map's last one.  `DrawTA()`
+  (`src/title/ta/taeactrl.c`) deliberately asks for a view taller than the map
+  (`GridRect[2].dy + 320`) so that a vertical scroll of up to 256 pixels always
+  fills the screen; with Y clipping, every screen row below
+  `mapHeight - scrollY` was skipped and the next grid down (the round list)
+  showed instead.
+- Fixed by wrapping the source Y like the X.  The rotating grids
+  (`DrawHmxDdaGrid`, special stages and Little Planet) still clip, since their
+  scan coordinates stay inside the map.
+- Checked: the time attack screen at rest is byte identical before and after
+  the change, as are the title screen, visual mode, stage select, best times,
+  sound test and the special stage.
