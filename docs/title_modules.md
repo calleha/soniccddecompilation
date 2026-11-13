@@ -197,3 +197,24 @@ Checked the way the fork did, by counting the glove's white pixels in the hand
 box (x 161-220, y 58-121) per frame of a headless capture of the transition: the
 first title frame had 172 instead of 305 before the fix, and 305 on every frame
 after it.
+
+## No stray pixels along the sprites' right edge (CD93 parity)
+
+`TITLE/BMP/OPENINGS.CM_` pads every sprite row to a multiple of eight pixels and
+does not always leave that padding zero, so a loader that copies whole padded
+rows draws it: the port showed single stray pixels along the right edge of some
+sprites, of which the two most visible were a light-grey and a white one at
+(221, 121) and (223, 121) - the bottom right of the hand frames - and a peach
+pair at (184, 80) and (185, 80) next to Sonic's face.  Their colour and whether
+they appeared depended on which sprite was on screen, so some of them only showed
+on some frames of the finger wave (the fork lists the same artefact as "stray
+white padding pixels" and fixed it by clipping the opening's sprites to their
+real width, `read_bitmap_clipped()`).
+
+`ld_bitmap_4to8_clipped()` in `src/title/common/hmx_oeeactl.c` is
+`ld_bitmap_4to8_1()` with the padded row width as a separate stride, and
+`ld_load_sprite2()` now builds each opening bitmap at the sprite's own width
+(`infoSprtBmp[i].w`) instead of the padded one, so the padding is never drawn.  The
+two bitmaps that come from BMP files (`1996SEGA.BMP`, `EXIT.BMP`) keep their
+sizes.  Comparing frame dumps before and after the change over the whole title
+sequence, only six pixels differ and all of them were padding data.

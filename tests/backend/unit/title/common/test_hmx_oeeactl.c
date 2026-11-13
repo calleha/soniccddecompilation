@@ -622,6 +622,19 @@ static void test_bitmap_4to8_conversion_variants(test_context *ctx) {
     memset(dst, 99, sizeof(dst));
     ld_bitmap_4to8_2(dst, src, 4, 1, 16, 0, 0);
     TEST_ASSERT_EQ_INT(ctx, 0, dst[2]);
+
+    /* The opening's sprites are stored with their rows padded to a multiple of
+       eight pixels; only the sprite's own columns may be written, or the data
+       left in the padding shows as stray pixels on the right of the sprite. */
+    memset(dst, 99, sizeof(dst));
+    ld_bitmap_4to8_clipped(dst, src, 2, 1, 4, 16, 1);
+    TEST_ASSERT_EQ_INT(ctx, 17, dst[0]);
+    TEST_ASSERT_EQ_INT(ctx, 18, dst[1]);
+    TEST_ASSERT_EQ_INT(ctx, 99, dst[2]);
+
+    memset(dst, 99, sizeof(dst));
+    ld_bitmap_4to8_clipped(dst, src, 4, 1, 4, 16, 0);
+    TEST_ASSERT_EQ_INT(ctx, 0, dst[2]);
 }
 
 static void test_bitmap_file_loads_rows_palette_and_cleanup(test_context *ctx) {
@@ -755,11 +768,14 @@ static void test_load_sprite2_opening_variant_paths(test_context *ctx) {
     TEST_ASSERT_EQ_INT(ctx, 2, open_call_count);
     /* The bitmap sizes are kept, so a copy can be made without repeating the
        loader's padding rules (see OESprBmpDuplicateUnfaded()); the two
-       bitmaps that do not come from the sprite table have none. */
+       bitmaps that do not come from the sprite table have none.  Sprite 1 is
+       9 pixels wide but its rows are padded to 16 in the file, and only the
+       sprite's own columns are kept (see ld_bitmap_4to8_clipped()). */
     TEST_ASSERT_EQ_INT(ctx, 8, sprBmpW[0]);
     TEST_ASSERT_EQ_INT(ctx, 4, sprBmpH[0]);
-    TEST_ASSERT_EQ_INT(ctx, 16, sprBmpW[1]);
+    TEST_ASSERT_EQ_INT(ctx, 9, sprBmpW[1]);
     TEST_ASSERT_EQ_INT(ctx, 5, sprBmpH[1]);
+    TEST_ASSERT_EQ_INT(ctx, 9, bitmap_create_widths[1]);
     TEST_ASSERT_EQ_INT(ctx, 0, sprBmpW[3]);
     TEST_ASSERT_EQ_INT(ctx, 0, sprBmpW[31]);
 

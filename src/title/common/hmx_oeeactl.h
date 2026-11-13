@@ -10,6 +10,8 @@ void ld_bitmap_4to8_1(void *dst, void *src, Sint32 wx, Sint32 wy, Sint32 palet,
                       Sint32 zero_chg, Sint32 flag4);
 void ld_bitmap_4to8_2(void *dst, void *src, Sint32 wx, Sint32 wy, Sint32 palet,
                       Sint32 zero_chg, Sint32 flag4);
+void ld_bitmap_4to8_clipped(void *dst, void *src, Sint32 wx, Sint32 wy,
+                            Sint32 stride, Sint32 palet, Sint32 zero_chg);
 Sint32 ld_load_sprite2(hmx_environment *buffer, char *file,
                        hmx_environment *env, hmx_bitmap **bitmaps, Sint32 size);
 Sint32 ld_load_sprite1(hmx_environment *buffer, char *file,

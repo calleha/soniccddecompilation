@@ -277,6 +277,45 @@ void ld_bitmap_4to8_2(void *dst, void *src, Sint32 wx, Sint32 wy, Sint32 palet,
     }
 }
 
+/* ld_bitmap_4to8_1() for a packed file whose rows are padded to a multiple of
+   eight pixels: `wx` is the sprite's own width and `stride` the width of the
+   stored row.  OPENINGS.CM_ leaves data in that padding, and drawn it showed as
+   stray pixels along the right edge of the sprites (the fork fixed the same
+   thing by clipping the opening's sprites to their real width), so only the
+   sprite's own columns are kept.  That also covers the one sprite the reference
+   loads with ld_bitmap_4to8_2(): the column that one blanks is padding. */
+void ld_bitmap_4to8_clipped(void *dst, void *src, Sint32 wx, Sint32 wy,
+                            Sint32 stride, Sint32 palet, Sint32 zero_chg) {
+    Uint8 *pDst, *pSrc;
+    Uint8 value;
+    Sint32 x, y;
+
+    pDst = dst;
+    pSrc = src;
+
+    for (y = 0; y < wy; ++y) {
+        for (x = 0; x < stride; ++x) {
+            if (x & 1)
+                value = (Uint8)((*pSrc & 15) + palet);
+            else
+                value = (Uint8)(((*pSrc & 240) >> 4) + palet);
+
+            if (x < wx) {
+                if (value == palet) {
+                    if (zero_chg != 0) {
+                        *pDst = 255;
+                    } else
+                        *pDst = 0;
+                } else
+                    *pDst = value;
+                ++pDst;
+            }
+            if (x & 1)
+                ++pSrc;
+        }
+    }
+}
+
 Sint32 ld_load_sprite2(hmx_environment *buffer, char *file,
                        hmx_environment *env, hmx_bitmap **bitmaps,
                        Sint32 size) {
@@ -288,7 +327,6 @@ Sint32 ld_load_sprite2(hmx_environment *buffer, char *file,
     hmx_bitmap *bmp;
     ld_sprite_inf *s;
     Sint32 wx, wy;
-    Sint32 flag4;
 
     for (i = 0; i < size; ++i) {
         bitmaps[i] = 0;
@@ -308,8 +346,6 @@ Sint32 ld_load_sprite2(hmx_environment *buffer, char *file,
         ++read_count;
         for (i = 0; i < read_count; ++i) {
 
-            flag4 = 0;
-
             if (i > 31)
                 s = &header->spr[i - 1];
             else
@@ -324,23 +360,19 @@ Sint32 ld_load_sprite2(hmx_environment *buffer, char *file,
                 bmp = hmx_bitmap_create_module(env, 40, 16);
                 wx = wy = 0;
             } else {
+                /* `wx` is the width of the stored row: the file pads each row
+                   to a multiple of eight pixels.  The bitmap itself is only as
+                   wide as the sprite (see ld_bitmap_4to8_clipped()). */
                 wx = (infoSprtBmp[i].w + 7) / 8 * 8;
                 wy = infoSprtBmp[i].h;
-                bmp = hmx_bitmap_create_module(env, wx, wy);
-                sprBmpSetSize(i, wx, wy);
+                bmp = hmx_bitmap_create_module(env, infoSprtBmp[i].w, wy);
+                sprBmpSetSize(i, infoSprtBmp[i].w, wy);
             }
 
-            if (wx & 4) {
-                wx += 4;
-                flag4 = 1;
-            }
-
-            if (i != 24 && i != 3 && i != 31)
-                ld_bitmap_4to8_1(hmx_bitmap_get_scan0_module(bmp), pixbuf, wx,
-                                 wy, infoSprtBmp[i].palOff, 1, flag4);
-            else if (i == 24)
-                ld_bitmap_4to8_2(hmx_bitmap_get_scan0_module(bmp), pixbuf, wx,
-                                 wy, infoSprtBmp[i].palOff, 1, flag4);
+            if (i != 3 && i != 31)
+                ld_bitmap_4to8_clipped(hmx_bitmap_get_scan0_module(bmp), pixbuf,
+                                       infoSprtBmp[i].w, wy, wx,
+                                       infoSprtBmp[i].palOff, 1);
             else if (i == 31)
                 ld_bitmap_file("../TITLE/OPENING/EXIT.BMP",
                                hmx_bitmap_get_scan0_module(bmp), 40, 16,
@@ -351,10 +383,6 @@ Sint32 ld_load_sprite2(hmx_environment *buffer, char *file,
                                hmx_bitmap_get_scan0_module(bmp), 248, 8, 0, 1);
 
             pixbuf += wx * wy / 2;
-
-            if (flag4 != 0) {
-                wx -= 4;
-            }
 
             hmx_bitmap_set_transparency_module(bmp, 255);
 
