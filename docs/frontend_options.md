@@ -8,7 +8,27 @@ can be given anywhere on the command line:
 | Option | Effect |
 | --- | --- |
 | `--scanlines` | Draw a soft scanline filter over the game's picture |
+| `--fullscreen` | Start in (desktop) fullscreen instead of the 3x window |
 | `--timewarp-noskip` | Play the time warp transition (it is skipped by default) |
+
+## Fullscreen (`--fullscreen`)
+
+The frontend opens a 960x672 window (3x the 320x224 game picture) unless it is
+started with `--fullscreen`:
+
+```
+./frontend --fullscreen
+```
+
+`Graphics_SetFullscreen()` sets a flag that `Graphics_Init()` reads, so the
+window still comes up normal and is then switched with
+`SDL_SetWindowFullscreenMode(window, NULL)` plus `SDL_SetWindowFullscreen(window,
+true)` - i.e. borderless *desktop* fullscreen, which keeps the desktop
+resolution and behaves the same on X11 and Wayland, rather than an exclusive
+mode switch.  Scaling and letterboxing are the renderer's logical presentation
+(`SDL_LOGICAL_PRESENTATION_LETTERBOX`), the same one the windowed mode uses, so
+the picture fills the screen as far as the aspect ratio allows.  If the switch
+fails the reason is logged and the game stays in its window.
 
 ## Time warp (`--timewarp-noskip`)
 

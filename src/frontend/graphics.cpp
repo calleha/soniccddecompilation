@@ -39,6 +39,10 @@ static SDL_Texture *presentTexture;
    (see Graphics_SetScanlines()). */
 static bool scanlines;
 
+/* Start in fullscreen, set by --fullscreen before Graphics_Init() (see
+   Graphics_SetFullscreen()). */
+static bool launchFullscreen;
+
 #define ASSET_HEADER_ENCODED_LEN 16
 #define ROTATE_TILE_EMPTY 0xffff
 #define PLANET_ROTATE_GRID_W 10
@@ -500,6 +504,20 @@ void ChangeTileBmp(Sint32 tile_start, Sint32 bmp_no) {
 	changeTiles.at(tile_start) = bmp_no;
 }
 
+void Graphics_SetFullscreen(int enable) { launchFullscreen = enable != 0; }
+
+/* Fullscreen is desktop (borderless) fullscreen rather than a mode switch: the
+   320x224 picture is scaled up and letterboxed by the logical presentation, so
+   the desktop keeps its resolution.  A failure is logged and the game stays in
+   its window. */
+static void EnterFullscreen(SDL_Window *window) {
+
+	if (!SDL_SetWindowFullscreenMode(window, NULL) ||
+	    !SDL_SetWindowFullscreen(window, true)) {
+		SDL_Log("Couldn't switch to fullscreen: %s", SDL_GetError());
+	}
+}
+
 int Graphics_Init(SDL_Window **window, SDL_Renderer **renderer) {
 	if (!SDL_CreateWindowAndRenderer("Sonic CD", SCREEN_WIDTH * 3, SCREEN_HEIGHT * 3, 0, window, renderer)) {
 		SDL_Log("Failed to create window and renderer: %s", SDL_GetError());
@@ -507,6 +525,9 @@ int Graphics_Init(SDL_Window **window, SDL_Renderer **renderer) {
 	}
 	SDL_SetRenderLogicalPresentation(*renderer, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 	SDL_SetRenderVSync(*renderer, 1);
+	if (launchFullscreen) {
+		EnterFullscreen(*window);
+	}
 
 	sharedPalette = SDL_CreatePalette(256);
 	if (!sharedPalette) {

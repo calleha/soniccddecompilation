@@ -37,6 +37,7 @@ void Graphics_DrawSpecial(SDL_Renderer *renderer, const game_info *info);
 void Graphics_Shutdown(void);
 void Graphics_TitleSnapshotUnfadedPalette(void);
 void Graphics_SetScanlines(int enable);
+void Graphics_SetFullscreen(int enable);
 
 #ifdef __cplusplus
 }

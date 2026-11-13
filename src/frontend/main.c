@@ -61,10 +61,11 @@ int main(int argc, char **argv) {
     int i;
 
     /* --scanlines turns on the soft scanline filter (see
-       Graphics_SetScanlines()), and --timewarp-noskip brings back the time warp
-       transition, which is skipped by default.  Both are switches rather than
-       sub-commands, so they are taken out of the argument list here and can be
-       given anywhere on the command line, e.g. "./frontend --scanlines" or
+       Graphics_SetScanlines()), --fullscreen starts in fullscreen and
+       --timewarp-noskip brings back the time warp transition, which is skipped
+       by default.  All three are switches rather than sub-commands, so they are
+       taken out of the argument list here and can be given anywhere on the
+       command line, e.g. "./frontend --fullscreen" or
        "./frontend round 11A --scanlines". */
     {
         int kept = 1;
@@ -72,6 +73,8 @@ int main(int argc, char **argv) {
         for (i = 1; i < argc; ++i) {
             if (strcmp(argv[i], "--scanlines") == 0) {
                 Graphics_SetScanlines(1);
+            } else if (strcmp(argv[i], "--fullscreen") == 0) {
+                Graphics_SetFullscreen(1);
             } else if (strcmp(argv[i], "--timewarp-noskip") == 0) {
                 Round_SetSkipTimeWarp(0);
             } else {
