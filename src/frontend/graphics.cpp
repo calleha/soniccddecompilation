@@ -35,6 +35,10 @@ static SDL_Surface *framebuffer;
 static SDL_Surface *presentSurface;
 static SDL_Texture *presentTexture;
 
+/* Soft scanline filter, off unless the frontend is started with --scanlines
+   (see Graphics_SetScanlines()). */
+static bool scanlines;
+
 #define ASSET_HEADER_ENCODED_LEN 16
 #define ROTATE_TILE_EMPTY 0xffff
 #define PLANET_ROTATE_GRID_W 10
@@ -1427,6 +1431,34 @@ static int lastFgViewY;
 static int lastBgViewX;
 static int lastBgViewY;
 
+/* Soft scanlines: every odd output row has its RGB scaled by three quarters,
+   which reads as a soft darkening between lines rather than the hard black
+   gaps of a CRT shader (the fork's apply_scanlines() does the same).  The
+   filter lives in the present step, so it covers every screen the game draws -
+   title, menus, stages, special stages, Time Attack - and nothing else.  It is
+   applied to the copy of the frame that goes to the screen, which is also what
+   FRAME_DUMP saves, so dumps show the filtered picture.  The FMV cutscenes
+   present themselves through src/frontend/movie.c and are left unfiltered. */
+static void ApplyScanlines(SDL_Surface *surface) {
+	const int rowStride = surface->pitch / (int)sizeof(Uint32);
+	Uint32 *row = (Uint32 *)surface->pixels;
+
+	for (int y = 0; y < surface->h; ++y, row += rowStride) {
+		if (!(y & 1)) {
+			continue;
+		}
+		for (int x = 0; x < surface->w; ++x) {
+			Uint32 pixel = row[x];
+			Uint32 red = ((pixel >> 16) & 0xff) * 3 / 4;
+			Uint32 green = ((pixel >> 8) & 0xff) * 3 / 4;
+			Uint32 blue = (pixel & 0xff) * 3 / 4;
+			row[x] = (pixel & 0xff000000) | (red << 16) | (green << 8) | blue;
+		}
+	}
+}
+
+void Graphics_SetScanlines(int enable) { scanlines = enable != 0; }
+
 static void PresentFrame(SDL_Renderer *renderer) {
 	/* While a movie plays it owns the screen; the game still runs and draws
 	   into the framebuffer, but presenting it would stomp the movie frame. */
@@ -1434,6 +1466,9 @@ static void PresentFrame(SDL_Renderer *renderer) {
 		return;
 	}
 	SDL_BlitSurface(framebuffer, NULL, presentSurface, NULL);
+	if (scanlines) {
+		ApplyScanlines(presentSurface);
+	}
 	Uint32 *srcPixels = (Uint32 *)presentSurface->pixels;
 	Uint32 *dstPixels;
 	int pitch;

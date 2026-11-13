@@ -58,6 +58,26 @@ void *FrontendPadGet(Uint32 padNo) {
 
 int main(int argc, char **argv) {
     frontend_state state = FRONTEND_STATE_TITLE;
+    int i;
+
+    /* --scanlines turns on the soft scanline filter (see
+       Graphics_SetScanlines()).  It is a switch rather than a sub-command, so
+       it is taken out of the argument list here and can be given anywhere on
+       the command line, e.g. "./frontend --scanlines" or
+       "./frontend round 11A --scanlines". */
+    {
+        int kept = 1;
+
+        for (i = 1; i < argc; ++i) {
+            if (strcmp(argv[i], "--scanlines") == 0) {
+                Graphics_SetScanlines(1);
+            } else {
+                argv[kept++] = argv[i];
+            }
+        }
+        argc = kept;
+        argv[argc] = NULL;
+    }
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         fprintf(stderr, "Couldn't init SDL: %s\n", SDL_GetError());
