@@ -8,6 +8,30 @@ can be given anywhere on the command line:
 | Option | Effect |
 | --- | --- |
 | `--scanlines` | Draw a soft scanline filter over the game's picture |
+| `--timewarp-noskip` | Play the time warp transition (it is skipped by default) |
+
+## Time warp (`--timewarp-noskip`)
+
+Touching a Past/Future sign and keeping the speed up warps Sonic to the other
+period.  The stage code picks the new period itself (`time_flag` with `0x80`,
+the reference's `GAMEFLAG_NEXT_TIME`) and the frontend used to answer that by
+loading the warp module, `bin/libwarp.so` (`src/warp/warp.c`): the seven-second
+transition with Sonic spinning and the warp palette, which a button press cuts
+short.  The fork in `soniccdrespinned` makes that optional and skips it by
+default (its "Skip time warp" setting), and the port does the same.
+
+`Round_Run()` in `src/frontend/round.c` therefore goes straight to
+`Round_LoadStageByMenu(0)` - exactly the load `Warp_Run()` does when the
+transition is over - instead of loading the warp module, so the stage in the
+other period starts immediately.  The period, the music and the stage itself are
+the same either way: the transition only animates.  `--timewarp-noskip` brings
+the transition back for a run:
+
+```
+./frontend round 11A --timewarp-noskip   # warps play the full transition
+```
+
+The `warp` dev entry (`./frontend warp`) still loads the transition directly.
 
 ## Scanline filter (`--scanlines`)
 

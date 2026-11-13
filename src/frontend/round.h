@@ -20,6 +20,10 @@ void Round_Unload(void);
    back to the title (gbUsedStageSelect in the reference). */
 void Round_MarkStageSelectUsed(void);
 
+/* Turns the "skip the time warp transition" behaviour on or off; it is on
+   unless the frontend was started with --timewarp-noskip. */
+void Round_SetSkipTimeWarp(int enable);
+
 #ifdef __cplusplus
 }
 #endif

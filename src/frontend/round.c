@@ -39,6 +39,13 @@ static int roundStageIsGoodFuture;
    title instead of the next act (gbUsedStageSelect in the reference). */
 static int roundStageSelectUsed;
 
+/* Whether a time warp jumps straight to the stage in the other period instead of
+   playing the warp transition (the reference's WARP module, bin/libwarp.so).
+   On by default; the frontend turns it off with --timewarp-noskip. */
+static int skipTimeWarp = 1;
+
+void Round_SetSkipTimeWarp(int enable) { skipTimeWarp = enable != 0; }
+
 static void Round_ReadStageString(char *str, size_t strSize) {
     Uint8 round;
     Uint8 zone;
@@ -444,6 +451,18 @@ frontend_state Round_Run(SDL_Renderer *renderer) {
     if (gameResult & 0x100) {
         CDPause(2);
         Round_Unload();
+        if (skipTimeWarp) {
+            /* The module has already picked the other period (time_flag | 0x80)
+               before it answered; the transition would only animate, so go
+               straight to the stage - the same load Warp_Run() does when the
+               transition is over. */
+            gameInfo.plflag = 2;
+            gameInfo.time_flag |= 0x80;
+            if (!Round_LoadStageByMenu(0)) {
+                return FRONTEND_STATE_EXIT;
+            }
+            return FRONTEND_STATE_ROUND;
+        }
         if (!Warp_Load()) {
             return FRONTEND_STATE_EXIT;
         }
