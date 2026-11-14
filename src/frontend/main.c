@@ -298,7 +298,7 @@ int main(int argc, char **argv) {
             state = Attract_Run(renderer, pressed);
             break;
         case FRONTEND_STATE_ENDING:
-            state = Ending_Run(pressed);
+            state = Ending_Run(newlyPressed);
             break;
         case FRONTEND_STATE_PLANET:
             state = Planet_Run(renderer);

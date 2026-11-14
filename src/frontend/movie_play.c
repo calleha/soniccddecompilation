@@ -7,7 +7,6 @@
 #include "title.h"
 
 /* A, B and Start on this port's pad layout (J, K, Return). */
-#define MOVIE_STOP_BUTTONS 0xB0
 
 static int movieActive;
 static int movieBackToVisualMode;

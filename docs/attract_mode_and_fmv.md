@@ -82,10 +82,27 @@ and black bars around them, then presented from the main loop; while a movie
 runs, `PresentFrame()` leaves the screen to the movie and the waiting game code
 keeps running underneath.
 
-Audio is decoded with libavcodec and resampled to 48 kHz stereo for an SDL
+Audio is decoded with libavcodec and resampled to 44.1 kHz stereo for an SDL
 audio stream. The OGV files carry two complete soundtracks for the same picture
 (the JP and the US music) with identical metadata, so the track is chosen by
 position: `MOVIE_AUDIO_STREAM_INDEX` in `src/frontend/movie.c` (0 is the first).
+
+Audio is decoded with libavcodec, resampled to 44.1 kHz stereo and queued on an
+SDL audio stream as the packets come in, and the stream is started when it is
+opened. The demuxer hands audio out in bursts - up to a second of sound can sit
+in front of the next video frame - so that is also how far the sound can trail
+the picture. The film's clock starts at the frame that is actually presented
+(`movie.start_ticks`), not when the file is opened, so the time spent decoding
+the first frame cannot put the picture behind the sound; late frames are dropped
+(up to eight per game frame) and the video decoder is opened with
+`thread_count = 0`. When the picture ends the remaining sound is allowed to drain
+(up to three seconds) before the movie reports itself finished.
+
+The picture is timed from that clock minus `movie.audio_offset`, which defaults
+to the device's own buffer (`SDL_GetAudioDeviceFormat()`); `MOVIE_AUDIO_OFFSET_MS`
+overrides it (positive holds the picture back, negative moves it forward).
+`MOVIE_DEBUG=1` logs a line a second -
+`movie: t=… picture=… sound=… (offset …ms, device …ms, queued …ms)`.
 
 ## How the stage demos stay in sync
 
@@ -128,6 +145,14 @@ sequence starts again. One difference from the reference: the "TRY AGAIN" /
 "YOU'RE TOO COOL!" line is not drawn again there, because the ending cutscenes
 this port plays already end with it.
 
+The reference only lets the player out of an ending after its movies
+(`AVIEndKeyWait()` in `TITLE/AVIGOOD/AVIGODDO.C`); here a fresh **Start** press
+cuts the running movie short and moves on to the next part, or to the message
+screen when that was the last one. Only Start does it: A and B stop the other
+movies, but during an ending they are what the player has just been pressing, so
+`Ending_Run()` gets the edge-triggered pad and checks `ENDING_SKIP_BUTTONS`
+(`0x80`) alone.
+
 ## Trying it out
 
 The frontend accepts the attract entries and the endings directly:
@@ -141,3 +166,30 @@ The frontend accepts the attract entries and the endings directly:
 
 Each attract item still ends the way it does in the rotation, so this also walks
 the rest of the sequence without waiting on the title screen.
+
+## Known issue: the cutscene sound runs about a second ahead
+
+Reported from gameplay: in every movie (opening, endings) the sound is roughly a
+second ahead of the picture, and the first seconds of sound drop out a couple of
+times. What the port does today, and what was measured:
+
+- The picture is timed from the wall clock (starting at the first presented
+  frame, see above) and the debug line shows it on time: `t=4.80 picture=4.80`.
+- The SDL audio stream reports ~700-1000 ms queued for the whole film: that is
+  the file's own interleave lead - OPN.OGV puts up to a second of audio packets
+  in front of the next video frame - and the sound that leaves the device is
+  limited by it.
+- `SDL_GetAudioDeviceFormat()` reports only a 17 ms device buffer, so the lead is
+  not the device's.
+
+Several attempts to compensate were tried in this port and reverted because they
+made things worse (a wall-clock offset, an audio-master clock, holding the sound
+back to a 100 ms queue, starting the device only after 300 ms of sound). They are
+gone; the audio path is the simple one: decode, resample, queue, and the stream is
+started by the first sound queued for it.
+
+The next thing to try is the structure the fork in `soniccdrespinned` uses: mix
+the movie's sound into the *game's* audio callback (`src/frontend/sound.c`,
+SDL3_mixer) one presented video frame at a time, instead of a separate SDL audio
+stream. That ties the sound to the frame being shown by construction, and removes
+the separate stream's buffering entirely.

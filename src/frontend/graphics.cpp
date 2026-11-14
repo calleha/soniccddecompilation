@@ -1504,6 +1504,11 @@ static void PresentFrame(SDL_Renderer *renderer) {
 		dstPixels += pitch;
 	}
 	SDL_UnlockTexture(presentTexture);
+	/* Clear first: the texture only covers the letterboxed picture, so without
+	   this whatever was in the rest of the window stays there - which showed as
+	   a stale strip beside the game after a resize or when starting fullscreen
+	   (the movie path clears, which is why a cutscene used to clean it up). */
+	SDL_RenderClear(renderer);
 	SDL_RenderTexture(renderer, presentTexture, NULL, NULL);
 	SDL_RenderPresent(renderer);
 	/* FRAME_DUMP=<frame number> saves that frame as /tmp/frame.bmp, and

@@ -9,6 +9,12 @@
 
 #define ENDING_PART_COUNT 2
 
+/* Only Start cuts the ending short, and only on a fresh press: A and B stop the
+   other movies (MOVIE_STOP_BUTTONS), but during an ending they are what the
+   player has just been hammering, so an accidental press would throw the
+   cutscene away. */
+#define ENDING_SKIP_BUTTONS 0x80
+
 /* Movie ids requested by the reference's ending modules: the AVIBAD module
    plays 2 and then 3, the AVIGOOD module 4 and then 5 (src/title/avigood/
    avigoddo.c).  Each ending is a two part movie: either one combined file
@@ -70,13 +76,18 @@ void Ending_Begin(void) {
 }
 
 frontend_state Ending_Run(Uint8 pressed) {
-    (void)pressed; /* the reference ignores the pad while the movie plays */
-
+    /* The reference only lets the player out of the ending after its movies
+       (AVIGOOD.C's AVIEndKeyWait); here a fresh Start press cuts the running one
+       short.  One press skips one part, so an ending played from the split SFD
+       halves takes two. */
     if (!ending_active) {
         return Ending_StartThanks();
     }
     if (Movie_IsPlaying()) {
-        return FRONTEND_STATE_ENDING;
+        if (!(pressed & ENDING_SKIP_BUTTONS)) {
+            return FRONTEND_STATE_ENDING;
+        }
+        Movie_Stop();
     }
     if (++ending_part >= ENDING_PART_COUNT) {
         ending_active = 0;

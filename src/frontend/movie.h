@@ -37,6 +37,11 @@ extern "C" {
 #define MOVIE_STAT_PLAYING 0
 #define MOVIE_STAT_FINISHED 3
 
+/* A, B and Start on this port's pad layout (J, K, Return): the buttons that cut
+   a running movie short, used by the attract/visual mode movie player.  The
+   ending only takes Start (see ENDING_SKIP_BUTTONS in ending.c). */
+#define MOVIE_STOP_BUTTONS 0xB0
+
 Sint32 Movie_Play(Sint32 id);
 Sint32 Movie_Stop(void);
 Sint32 Movie_Stat(void);

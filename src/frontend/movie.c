@@ -79,8 +79,25 @@ static struct {
     SDL_Texture *texture;
     SDL_AudioStream *sound;
     Uint8 *pixels;
+    /* Play position of the sound coming out of the device, which is what the
+       picture is timed against (see Movie_Clock()). */
+    Uint64 fed_audio_bytes;
+    /* How far the picture is held back so that it lines up with the sound: the
+       device's buffer, or MOVIE_AUDIO_OFFSET_MS when that is given. */
+    double device_latency;
+    double audio_offset;
+    double audio_clock;
+    Uint64 audio_clock_moved;
+    int audio_started;
+    /* Set when the first frame has been presented: the picture and the sound
+       both start from there, so the time spent decoding the first frame cannot
+       put the sound ahead of the picture. */
+    int started;
     Uint64 start_ticks;
     double next_frame_time;
+    /* Set when the picture is over but decoded sound may still be playing. */
+    int video_done;
+    Uint64 drain_deadline;
     int playing;
 } movie;
 
@@ -91,6 +108,15 @@ static void Movie_Release(void) {
         SDL_DestroyAudioStream(movie.sound);
         movie.sound = NULL;
     }
+    movie.video_done = 0;
+    movie.drain_deadline = 0;
+    movie.fed_audio_bytes = 0;
+    movie.device_latency = 0.0;
+    movie.audio_offset = 0.0;
+    movie.audio_clock = 0.0;
+    movie.audio_clock_moved = 0;
+    movie.audio_started = 0;
+    movie.started = 0;
     if (movie.texture) {
         SDL_DestroyTexture(movie.texture);
         movie.texture = NULL;
@@ -138,8 +164,14 @@ static int Movie_OpenVideo(const char *path) {
     if (!movie.video ||
         avcodec_parameters_to_context(
             movie.video, movie.format->streams[movie.video_stream]->codecpar) <
-            0 ||
-        avcodec_open2(movie.video, codec, NULL) < 0) {
+            0) {
+        return 0;
+    }
+    /* Decode on every core: these are 640x480 Theora, and a machine that cannot
+       decode a frame within one game frame would otherwise let the picture fall
+       behind its sound. */
+    movie.video->thread_count = 0;
+    if (avcodec_open2(movie.video, codec, NULL) < 0) {
         return 0;
     }
 
@@ -252,10 +284,28 @@ static int Movie_OpenAudio(void) {
     spec.format = SDL_AUDIO_S16;
     spec.channels = MOVIE_AUDIO_CHANNELS;
     spec.freq = MOVIE_AUDIO_RATE;
+    /* Opened paused; Movie_StartAudio() resumes it once enough sound is queued
+       for it, so it does not start on an empty stream. */
     movie.sound = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
                                             &spec, NULL, NULL);
+    /* Started by the first sound that is queued for it (see Movie_QueueAudio),
+       so it does not run on an empty queue - that was audible as a click or two
+       at the start of a movie. */
     if (movie.sound) {
-        SDL_ResumeAudioStreamDevice(movie.sound);
+        SDL_AudioDeviceID device = SDL_GetAudioStreamDevice(movie.sound);
+        SDL_AudioSpec device_spec;
+        int frames = 0;
+
+        /* The device keeps a buffer of its own between the stream and the
+           speaker; without it in the clock the picture still leads the sound by
+           that much.  MOVIE_AUDIO_OFFSET_MS replaces it, for a machine where the
+           sound server adds more than the device reports. */
+        if (device != 0 &&
+            SDL_GetAudioDeviceFormat(device, &device_spec, &frames) &&
+            frames > 0 && device_spec.freq > 0) {
+            movie.device_latency = (double)frames / (double)device_spec.freq;
+        }
+        movie.audio_offset = movie.device_latency;
     }
     return 1;
 }
@@ -283,9 +333,15 @@ static void Movie_QueueAudio(const AVPacket *packet) {
                                 (const Uint8 **)movie.audio_frame->extended_data,
                                 movie.audio_frame->nb_samples);
         if (converted > 0) {
-            SDL_PutAudioStreamData(movie.sound, buffer,
-                                   converted * MOVIE_AUDIO_CHANNELS *
-                                       (int)sizeof(Sint16));
+            int bytes = converted * MOVIE_AUDIO_CHANNELS * (int)sizeof(Sint16);
+
+            if (SDL_PutAudioStreamData(movie.sound, buffer, bytes)) {
+                movie.fed_audio_bytes += (Uint64)bytes;
+                if (!movie.audio_started) {
+                    movie.audio_started = 1;
+                    SDL_ResumeAudioStreamDevice(movie.sound);
+                }
+            }
         }
         av_free(buffer);
         av_frame_unref(movie.audio_frame);
@@ -412,7 +468,8 @@ Sint32 Movie_Play(Sint32 id) {
     }
 
     movie.playing = 1;
-    movie.start_ticks = SDL_GetTicks();
+    movie.started = 0;
+    movie.start_ticks = 0;
     movie.next_frame_time = 0.0;
     SDL_Log("movie %d: playing %s", (int)id, entry->candidates[i]);
     return 1;
@@ -431,31 +488,142 @@ Sint32 Movie_Stat(void) {
 
 int Movie_IsPlaying(void) { return movie.playing; }
 
+/* Where the picture belongs.  The picture is timed from the wall clock, minus a
+   fixed allowance for the sound pipeline: whatever the device (or the sound
+   server behind it) adds between the samples we hand over and the speaker is a
+   constant, and it made the sound arrive late against a picture that was on
+   time.  MOVIE_AUDIO_OFFSET_MS overrides the allowance, for a machine whose
+   latency differs. */
+static double Movie_Clock(double elapsed) {
+    static int offset_ms = -1;
+
+    if (offset_ms < 0) {
+        const char *option = SDL_getenv("MOVIE_AUDIO_OFFSET_MS");
+
+        if (option && *option) {
+            int value = SDL_atoi(option);
+
+            if (value < -1000) {
+                value = -1000;
+            } else if (value > 2000) {
+                value = 2000;
+            }
+            offset_ms = value;
+        } else {
+            offset_ms = (int)(movie.device_latency * 1000.0 + 0.5);
+        }
+    }
+    elapsed -= (double)offset_ms / 1000.0;
+    return elapsed > 0.0 ? elapsed : 0.0;
+}
+
+/* The picture is over.  Decoded sound may still be waiting for the device, and
+   the last second of a cutscene should not be cut off, so keep feeding it for a
+   moment before the movie reports itself finished. */
+static void Movie_Finish(void) {
+    if (movie.sound && SDL_GetAudioStreamQueued(movie.sound) > 0 &&
+        SDL_GetTicks() < movie.drain_deadline) {
+        return;
+    }
+    Movie_Release();
+}
+
+/* MOVIE_DEBUG=1 in the environment logs, once a second, where the picture and
+   the sound are, so a report of "the sound is late" can be checked without a
+   debugger. */
+static void Movie_DebugTrace(double elapsed, double clock, double video_pos) {
+    static int enabled = -1;
+    static Uint64 last_log;
+    Uint64 now = SDL_GetTicks();
+
+    if (enabled < 0) {
+        const char *option = SDL_getenv("MOVIE_DEBUG");
+        enabled = (option && *option && *option != '0') ? 1 : 0;
+    }
+    if (!enabled || now - last_log < 1000) {
+        return;
+    }
+    last_log = now;
+    SDL_Log("movie: t=%.2f picture=%.2f sound=%.2f (offset %.0fms, device %.0fms, "
+            "queued %.0fms)",
+            elapsed, video_pos, clock,
+            (elapsed - clock) * 1000.0, movie.device_latency * 1000.0,
+            (double)SDL_GetAudioStreamQueued(movie.sound) * 1000.0 /
+                (MOVIE_AUDIO_RATE * MOVIE_AUDIO_CHANNELS * 2));
+}
+
 void Movie_Update(SDL_Renderer *renderer) {
     double elapsed;
+    double clock;
+    double stamp;
     int shown = 0;
+    int dropped = 0;
 
     if (!movie.playing) {
         return;
     }
-    elapsed = (double)(SDL_GetTicks() - movie.start_ticks) / 1000.0;
+    elapsed = movie.started
+                  ? (double)(SDL_GetTicks() - movie.start_ticks) / 1000.0
+                  : 0.0;
+
+    if (movie.video_done) {
+        Movie_Finish();
+        return;
+    }
+    /* The sound leads; the picture follows it - but never more than a quarter of
+       a second behind real time, so a device that runs slow or stops cannot
+       stretch the movie or freeze it on screen. */
+    clock = Movie_Clock(elapsed);
+    if (clock < elapsed - 1.0) {
+        clock = elapsed - 1.0;
+    }
+
+    /* Behind the clock (a slow machine, or the start of a file): throw frames
+       away until the picture is back where it belongs, instead of showing them
+       late and letting the picture drift away from the sound. */
+    while (clock - movie.next_frame_time > movie.frame_duration &&
+           dropped < 8) {
+
+        if (!Movie_DecodeFrame()) {
+            movie.video_done = 1;
+            movie.drain_deadline = SDL_GetTicks() + 3000;
+            Movie_Finish();
+            return;
+        }
+        stamp = (movie.frame->best_effort_timestamp == AV_NOPTS_VALUE)
+                    ? movie.next_frame_time
+                    : (double)movie.frame->best_effort_timestamp *
+                          movie.time_base;
+        movie.next_frame_time = stamp + movie.frame_duration;
+        av_frame_unref(movie.frame);
+        ++dropped;
+    }
 
     /* Show every frame whose time has come; two per tick at most, so a slow
        frame cannot make the movie run away. */
-    while (shown < 2 && elapsed >= movie.next_frame_time) {
+    while (shown < 2 && clock >= movie.next_frame_time) {
         double stamp;
+        double shown_pos;
 
         if (!Movie_DecodeFrame()) {
-            Movie_Release();
+            movie.video_done = 1;
+            movie.drain_deadline = SDL_GetTicks() + 3000;
+            Movie_Finish();
             return;
         }
         Movie_Present(renderer);
         ++shown;
+        if (!movie.started) {
+            movie.started = 1;
+            movie.start_ticks = SDL_GetTicks();
+        }
 
         stamp = (movie.frame->best_effort_timestamp == AV_NOPTS_VALUE)
                     ? movie.next_frame_time
                     : (double)movie.frame->best_effort_timestamp *
                           movie.time_base;
+        shown_pos = stamp;
+        Movie_DebugTrace(elapsed, clock, shown_pos);
         movie.next_frame_time = stamp + movie.frame_duration;
         av_frame_unref(movie.frame);
     }

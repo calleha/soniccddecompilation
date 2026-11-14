@@ -1750,3 +1750,21 @@ tests.
 - Checked: the time attack screen at rest is byte identical before and after
   the change, as are the title screen, visual mode, stage select, best times,
   sound test and the special stage.
+
+## R8 final boss: a landed arm stops hurting (reference behaviour, kept)
+
+- Reported from gameplay: walking into one of the arms the Metallic Madness boss
+  throws does no damage.
+- Checked against the reference: `R8/BOSS_8.C` makes an arm hazardous as long as
+  it is on the machine, while it is thrown (`egg8hane_fire1` steps 0-4 leave
+  `colino` at 180-191) and for 30 frames after it lands; then `egg8hane_fire1`
+  case 5 clears `colino`/`colicnt` (lines 3344-3351), so the arm lies visible and
+  blinking for a second without a collision box before it disappears.  The port
+  is line-for-line the same here: `pcol()` (`src/r8/coli8.c`) scans `actwk[32..127]`
+  for `actflg & 128` and a non-zero `colino`, `hane_offs_set` re-arms the arm from
+  `hane_offs_tbl` every frame in the `normal` state, and a scripted run that put
+  Sonic into a thrown arm produced the full damage response (`playdamageset` ->
+  `playdieset` with no rings).
+- Conclusion: a landed arm being harmless is intended, so the collision code was
+  left alone; re-arming the landed arm would deviate from the reference (and is
+  the change that was tried and reverted in the fork).
