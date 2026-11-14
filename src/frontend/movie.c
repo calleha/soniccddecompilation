@@ -488,35 +488,6 @@ Sint32 Movie_Stat(void) {
 
 int Movie_IsPlaying(void) { return movie.playing; }
 
-/* Where the picture belongs.  The picture is timed from the wall clock, minus a
-   fixed allowance for the sound pipeline: whatever the device (or the sound
-   server behind it) adds between the samples we hand over and the speaker is a
-   constant, and it made the sound arrive late against a picture that was on
-   time.  MOVIE_AUDIO_OFFSET_MS overrides the allowance, for a machine whose
-   latency differs. */
-static double Movie_Clock(double elapsed) {
-    static int offset_ms = -1;
-
-    if (offset_ms < 0) {
-        const char *option = SDL_getenv("MOVIE_AUDIO_OFFSET_MS");
-
-        if (option && *option) {
-            int value = SDL_atoi(option);
-
-            if (value < -1000) {
-                value = -1000;
-            } else if (value > 2000) {
-                value = 2000;
-            }
-            offset_ms = value;
-        } else {
-            offset_ms = (int)(movie.device_latency * 1000.0 + 0.5);
-        }
-    }
-    elapsed -= (double)offset_ms / 1000.0;
-    return elapsed > 0.0 ? elapsed : 0.0;
-}
-
 /* The picture is over.  Decoded sound may still be waiting for the device, and
    the last second of a cutscene should not be cut off, so keep feeding it for a
    moment before the movie reports itself finished. */
@@ -570,13 +541,12 @@ void Movie_Update(SDL_Renderer *renderer) {
         Movie_Finish();
         return;
     }
-    /* The sound leads; the picture follows it - but never more than a quarter of
-       a second behind real time, so a device that runs slow or stops cannot
-       stretch the movie or freeze it on screen. */
-    clock = Movie_Clock(elapsed);
-    if (clock < elapsed - 1.0) {
-        clock = elapsed - 1.0;
-    }
+    /* The picture runs on the wall clock, one frame per frame time, like the
+       game itself: it cannot stutter waiting for the audio device and cannot be
+       stretched by one.  The sound is queued as it is decoded; where the two end
+       up relative to each other is a property of the audio path, not of this
+       clock (see the note on the sound lead in docs/attract_mode_and_fmv.md). */
+    clock = elapsed;
 
     /* Behind the clock (a slow machine, or the start of a file): throw frames
        away until the picture is back where it belongs, instead of showing them

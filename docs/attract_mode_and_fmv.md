@@ -98,9 +98,11 @@ the first frame cannot put the picture behind the sound; late frames are dropped
 `thread_count = 0`. When the picture ends the remaining sound is allowed to drain
 (up to three seconds) before the movie reports itself finished.
 
-The picture is timed from that clock minus `movie.audio_offset`, which defaults
-to the device's own buffer (`SDL_GetAudioDeviceFormat()`); `MOVIE_AUDIO_OFFSET_MS`
-overrides it (positive holds the picture back, negative moves it forward).
+The picture runs on the wall clock - one frame per frame time, like the game
+itself - starting at the first frame that is presented. Timing it from the audio
+device instead was tried and made the picture stutter while the device was
+starting up and let a slow device stretch the whole film, so the wall clock is
+what the port uses.
 `MOVIE_DEBUG=1` logs a line a second -
 `movie: t=… picture=… sound=… (offset …ms, device …ms, queued …ms)`.
 
@@ -167,29 +169,29 @@ The frontend accepts the attract entries and the endings directly:
 Each attract item still ends the way it does in the rotation, so this also walks
 the rest of the sequence without waiting on the title screen.
 
-## Known issue: the cutscene sound runs about a second ahead
+## Known issue: the cutscene sound runs about a second behind
 
 Reported from gameplay: in every movie (opening, endings) the sound is roughly a
-second ahead of the picture, and the first seconds of sound drop out a couple of
+second **behind** the picture, and the first seconds of sound drop out a couple of
 times. What the port does today, and what was measured:
 
 - The picture is timed from the wall clock (starting at the first presented
   frame, see above) and the debug line shows it on time: `t=4.80 picture=4.80`.
-- The SDL audio stream reports ~700-1000 ms queued for the whole film: that is
-  the file's own interleave lead - OPN.OGV puts up to a second of audio packets
-  in front of the next video frame - and the sound that leaves the device is
-  limited by it.
-- `SDL_GetAudioDeviceFormat()` reports only a 17 ms device buffer, so the lead is
-  not the device's.
+- The SDL audio stream reports ~700-1000 ms queued for the whole film. That is the
+  file's own interleave lead - OPN.OGV puts up to a second of audio packets in
+  front of the next video frame - and it is the size of the lead the sound is
+  heard behind the picture by.
+- `SDL_GetAudioDeviceFormat()` reports only a 17 ms device buffer, so the latency
+  is in the stream's queue and whatever the sound server adds, not in the device.
 
 Several attempts to compensate were tried in this port and reverted because they
-made things worse (a wall-clock offset, an audio-master clock, holding the sound
-back to a 100 ms queue, starting the device only after 300 ms of sound). They are
-gone; the audio path is the simple one: decode, resample, queue, and the stream is
-started by the first sound queued for it.
+made things worse or did nothing audible (delaying the picture by a fixed offset
+and via `MOVIE_AUDIO_OFFSET_MS`, an audio-master clock that made the picture
+stutter while the device started and stretched the film when the device ran slow,
+holding the sound back to a 100 ms queue, and starting the device only after
+300 ms of sound - the last two silenced the film). They are gone; the audio path
+is the simple one: decode, resample, queue on an SDL audio stream, started by the
+first sound queued for it, with the picture on the wall clock.
 
-The next thing to try is the structure the fork in `soniccdrespinned` uses: mix
-the movie's sound into the *game's* audio callback (`src/frontend/sound.c`,
-SDL3_mixer) one presented video frame at a time, instead of a separate SDL audio
-stream. That ties the sound to the frame being shown by construction, and removes
-the separate stream's buffering entirely.
+The plan for fixing it - and the start-up dropouts with it - is in
+`docs/movie_audio_plan.md`.
