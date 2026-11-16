@@ -268,7 +268,7 @@ void playpowercnt(void) {
     Uint16 d0;
     Uint16 cal;
 
-    if (backto_cnt < 157) {
+    if (backto_cnt < 210) {
         d0 = work->damage_invulnerability_timer;
         if (d0 != 0) {
             --work->damage_invulnerability_timer;
@@ -444,7 +444,7 @@ void backto_chk(void) {
         d0 = -d0;
     if (backto_cnt == 0)
         backto_cnt = 1;
-    if ((d1 = backto_cnt) >= 165) {
+    if ((d1 = backto_cnt) >= 230) {
         if (plflag != 2) {
             cal = time_flag;
             cal = cal + time_item;
@@ -460,7 +460,7 @@ void backto_chk(void) {
         fadeout_s();
         return;
     }
-    if (d1 >= 157) {
+    if (d1 >= 210) {
         if (plflag == 2)
             return;
         scroll_start.b.h = 1;
