@@ -18,6 +18,17 @@
 #define ROUND_STAGE_ID_LEN 3
 #define ROUND_SPRITE_COUNT 700
 
+/* stageno.b.h of the last round (R8, Metallic Madness) and stageno.b.l of a
+   round's last zone. */
+#define ROUND_LAST 6
+#define ZONE_LAST 2
+
+/* clrgood bits: one per round, credited in stageno.b.h order, so the rounds
+   before the last one are bits 0-5 and R8 is bit 6.  All seven earned is 127,
+   which is what the ending test in ending.c looks for. */
+#define ROUND_CLRGOOD_LAST (1 << ROUND_LAST)
+#define ROUND_CLRGOOD_ALL 127
+
 static const Uint16 tileChangeMask[8] = {
     0,
     0x0B00,
@@ -88,6 +99,38 @@ static void Round_SetCurrentStage(void) {
         gameInfo.projector_flag = 0;
     }
     stageIdInitialized = 1;
+}
+
+/* The last zone of the last round is the player's indicator of which ending
+   they are about to get, so it only runs in the good future once the good ending
+   has been earned: all seven Time Stones, or a good future in each of the six
+   rounds before R8 (R8's own clrgood bit is credited only after this zone is
+   cleared).  This is the port's deliberate deviation from the reference - see
+   docs/r83_good_future_bug.md; the reference lets the round's own two robot
+   generators alone turn R83 into the good future, which can leave the player
+   looking at the good future while the bad ending plays.
+
+   Dropping generate_flag before the stage is loaded is enough: the frontend
+   picks the "?3D" module and data with it, and the module reads the same value
+   out of the keep work for its own GetRoundStr() calls, so the whole stage -
+   maps, tiles, sprites and the module - is the bad future the reference would
+   have loaded for R83D. */
+static void Round_ClearLastZoneGoodFuture(void) {
+    if (gameInfo.stageno.b.h != ROUND_LAST ||
+        gameInfo.stageno.b.l != ZONE_LAST) {
+        return;
+    }
+    if (gameInfo.time_flag != 2 || !gameInfo.generate_flag) {
+        return;
+    }
+    if (gameInfo.clrspflg_save == 127) {
+        return;
+    }
+    if ((Uint8)(scoreData.clrgood | ROUND_CLRGOOD_LAST) == ROUND_CLRGOOD_ALL) {
+        return;
+    }
+
+    gameInfo.generate_flag = 0;
 }
 
 static void Round_SetStageByMenu(Uint32 stageMenuId) {
@@ -328,10 +371,10 @@ static frontend_state Round_LoadNextStage(void) {
         return FRONTEND_STATE_TITLE;
     }
 
-    /* WINEXE/WINMAIN.C credits a zone's good future when the next zone's act 1
-       starts, if the act 3 that was just played ran in a good future (the
-       reference keeps this in DAT_0042570c, set from the "?3C" stage id at
-       load time).  clrgood is what decides the good ending later. */
+    /* WINEXE/WINMAIN.C credits a round's good future when the next round's
+       first zone starts, if the zone 3 that was just played ran in a good
+       future (the reference keeps this in DAT_0042570c, set from the "?3C"
+       stage id at load time).  clrgood is what decides the good ending later. */
     if (gameInfo.stageno.b.l == 0) {
         if (roundStageIsGoodFuture && gameInfo.stageno.b.h >= 1 &&
             gameInfo.stageno.b.h <= 7) {
@@ -342,8 +385,8 @@ static frontend_state Round_LoadNextStage(void) {
     }
 
     if (gameInfo.stageno.w == 0x0700) {
-        /* Last act of R8 cleared: the game is over, save the record and play
-           the ending movie (the reference's gEndingMovieFlag path).  The
+        /* Last zone of round 8 cleared: the game is over, save the record and
+           play the ending movie (the reference's gEndingMovieFlag path).  The
            opening DLL is loaded first because the main loop feeds the pad
            through the loaded module while the movie runs. */
         Round_Unload();
@@ -358,6 +401,7 @@ static frontend_state Round_LoadNextStage(void) {
 
     WriteScoreData(ReadScoreIndx(0), &scoreData, 0);
     Round_Unload();
+    Round_ClearLastZoneGoodFuture();
     if (!Round_LoadStageByMenu(0)) {
         return FRONTEND_STATE_EXIT;
     }

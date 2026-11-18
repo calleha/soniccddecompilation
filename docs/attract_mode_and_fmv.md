@@ -136,9 +136,15 @@ decides which ending to show and plays it as a two-part movie:
   `TITLE/AVI/END2.OGV`
 - bad ending otherwise - movies 2 and 3, `TITLE/AVI/END1.OGV`
 
-`clrgood` is credited the way the reference does it: when a zone's act 1
+`clrgood` is credited the way the reference does it: when a round's first zone
 starts, `DAT_0042570c` in the original - here a flag set from the "?3C" stage
-id at load time - says whether the act 3 just played ran in a good future.
+id at load time - says whether the zone 3 just played ran in a good future.
+
+One deliberate difference: the last zone of round 8 only runs in the good future
+when one of the two conditions above already holds, so `83C` is the player's
+indicator that the good ending is earned and `83D` that it is not. The reference
+leaves that decision to round 8's own two robot generators alone; see
+`docs/r83_good_future_bug.md`.
 
 `src/frontend/ending.c` runs that sequence. After the movies the thanks module
 takes over (see `docs/title_modules.md`): it shows the "PRESENTED BY SEGA" line
