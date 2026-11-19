@@ -1,0 +1,56 @@
+* Dependencies
+cmake, gcc, SDL3, SDL3_mixer, ffmpeg
+
+* Build
+
+Clone this repo
+
+#+begin_src sh
+git checkout portable
+cmake CMakeLists.txt
+cmake --build .
+#+end_src
+
+Create a game folder where you want the game to be installed
+
+Move or copy the 'bin' folder and the 'frontend' executable from the build directory to the newly created game folder
+
+* Main data
+
+Acquire 'SONICCD.CVM' from the Sonic Gems Collection PS2 DVD
+
+Extract the contents of 'SONICCD.CVM' to the game folder
+
+* Sound data
+
+Create the directories 'assets/Music' and 'assets/SFX' inside the game folder
+
+Acquire 'PCM8.CMP' from the PC version of Sonic CD (1996)
+
+Extract the contents of 'PCM8.CMP' to the 'assets/SFX' folder using 'SCDPCsnd'
+Note: These are low-quality sound effects which may be replaced with original Mega CD sound effects if desired. However, each file needs to be manually replaced since the order and number of files differ slightly
+
+Acquire the ogg vorbis music tracks: either from the 2011 remake of Sonic CD, or from the Missing Music Restoration. In order for them to loop correctly, many of the tracks require manual editing to cut out the repeating part after the loop point. Alternatively you can convert all the tracks from the Mega CD version to ogg vorbis and rename them according to the 2011 file names.
+
+Place all music tracks in 'assets/Music' and move all tracks within the 'JP' folder to the base 'Music' folder so that there are no sub-folders. Delete the 'JP' and 'US' folders
+
+* FMV data
+
+Acquire the video files in OGV/SFD/AVI format and place them in the 'TITLE/AVI' folder. Their file names need to be in all caps, including file extensions. OGV format is preferred to prevent frame desync.
+
+Priority names are: 'OPN.OGV', 'END1.OGV', 'END2.OGV', 'PENCIL.OGV' (optionally you may have 'END1B.OGV' and 'END2B.OGV' files that play after their respective "part 1")
+
+Also accepted: 'OPENING.SFD', 'ENDING1_1.SFD', 'ENDING1_2.SFD', 'ENDING2_1.SFD', 'ENDING2_2.SFD', 'SENGA.SFD'
+Or: 'OPN.AVI', 'BADEND1.AVI', 'BADEND2.AVI', 'GOODEND1.AVI', 'GOODEND2.AVI', 'PENCIL.AVI'
+
+* Run
+#+begin_src sh
+./frontend
+#+end_src
+
+or create a "soniccd" script containing the arguments you want, e.g.
+
+#+begin_src sh
+#!/usr/bin/env sh
+./frontend --scanlines --fullscreen --timewarp-noskip
+#+end_src

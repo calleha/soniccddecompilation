@@ -42,6 +42,11 @@ pad, `0xFFFF` marks the end), fed to `SWdataSet()` instead of the live pad by
 `Attract_OverridePad()`. A / B / Start on the real pad ends the demo, as in the
 original.
 
+A demo is marked in the keep work (`demoflag.w = -1`) for its whole run, because
+R82A's `playposiset()` reads that marker to start the player where the recording
+starts (`playpositbl[1]`). It has to be cleared again the moment the demo is
+over; see `docs/attract_demo_flag_leak.md` for what happened when it was not.
+
 ## Movies
 
 The movie files are decoded in-process with FFmpeg's libav* libraries

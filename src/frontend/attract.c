@@ -103,10 +103,13 @@ void Attract_Begin(void) {
     attract_frame = 0;
     attract_demo = 1;
 
-    /* The reference marks an attract demo in the keep work and asks the stage
-       code for the demo's alternate start (play_start bit 1).  Note that the
-       game DLLs reset their own demoflag in game_init(), exactly as the
-       original does, so the demos run from the act's normal start position. */
+    /* The reference marks an attract demo in the keep work
+       (WINEXE/WINMAIN.C:213) and asks the stage code for the demo's alternate
+       start with it: R82A's playposiset() reads the keep work copy and starts
+       the player at playpositbl[1], the position the recording begins from.
+       game_init() only resets the *module's* demoflag, so the marker has to be
+       dropped again when the demo ends - see Title_Restart() and
+       docs/attract_demo_flag_leak.md. */
     gameInfo.play_start = entry->play_start;
     gameInfo.demoflag.w = -1;
     gameInfo.plflag = 0;

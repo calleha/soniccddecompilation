@@ -117,6 +117,10 @@ static frontend_state StartNewGame(void) {
     gameInfo.clrspflg_save = 0;
     gameInfo.stagenm = 0;
     gameInfo.emie3end = 0;
+    /* Belt and braces for the attract demo marker: a game never starts as a
+       demo, whichever way the attract mode was left (see
+       docs/attract_demo_flag_leak.md). */
+    gameInfo.demoflag.w = 0;
     if (!Round_LoadStageByMenu(ROUND_STAGE_R11A)) {
         return FRONTEND_STATE_EXIT;
     }
@@ -138,6 +142,7 @@ static frontend_state ContinueGame(void) {
     gameInfo.clrspflg_save = scoreData.clrspflg_save;
     gameInfo.stagenm = scoreData.stagenm;
     gameInfo.emie3end = 0;
+    gameInfo.demoflag.w = 0;
 
     if (scoreData.roundNo < 7) {
         stageMenuId = ROUND_STAGE_R11A + scoreData.roundNo * 10;
@@ -261,6 +266,13 @@ Uint32 Title_DebugFlag(void) { return debugFlag; }
    (opening movie / stage demos) is over. */
 frontend_state Title_Restart(void) {
     visualMode = 0;
+    /* The reference's restartGame() drops the attract demo marker here
+       (WINEXE/WINMAIN.C:1180), and it has to go: it lives in the keep work, and
+       R82A's playposiset() takes it to mean "start the player at the demo's
+       position" (playpositbl[1], see src/r8/scr82a.c).  Left set, a later
+       playthrough started R82A at the demo's spot - see
+       docs/attract_demo_flag_leak.md. */
+    gameInfo.demoflag.w = 0;
     return LoadOpening();
 }
 
