@@ -180,29 +180,34 @@ The frontend accepts the attract entries and the endings directly:
 Each attract item still ends the way it does in the rotation, so this also walks
 the rest of the sequence without waiting on the title screen.
 
-## Known issue: the cutscene sound runs about a second behind
+## Fixed: the cutscene sound ran about a second behind
 
-Reported from gameplay: in every movie (opening, endings) the sound is roughly a
-second **behind** the picture, and the first seconds of sound drop out a couple of
-times. What the port does today, and what was measured:
+Reported from gameplay: in every movie (opening, endings) the sound was roughly a
+second **behind** the picture, and the first seconds of sound dropped out a
+couple of times.  There were two causes, both measured with `MOVIE_DEBUG=1`:
 
-- The picture is timed from the wall clock (starting at the first presented
-  frame, see above) and the debug line shows it on time: `t=4.80 picture=4.80`.
-- The SDL audio stream reports ~700-1000 ms queued for the whole film. That is the
-  file's own interleave lead - OPN.OGV puts up to a second of audio packets in
-  front of the next video frame - and it is the size of the lead the sound is
-  heard behind the picture by.
-- `SDL_GetAudioDeviceFormat()` reports only a 17 ms device buffer, so the latency
-  is in the stream's queue and whatever the sound server adds, not in the device.
+- the film had an audio device of its own (an SDL audio stream beside the game's
+  SDL3_mixer device), with its own queue, opened empty - the dropouts;
+- the films interleave their sound well behind their picture *in the file*
+  (OPN.OGV's first ~0.6 s is all picture), so reading the file in step with the
+  picture could not have the film's first sound ready when the picture started,
+  and the whole soundtrack began that much later - the ~1 s lead.
 
-Several attempts to compensate were tried in this port and reverted because they
-made things worse or did nothing audible (delaying the picture by a fixed offset
-and via `MOVIE_AUDIO_OFFSET_MS`, an audio-master clock that made the picture
-stutter while the device started and stretched the film when the device ran slow,
-holding the sound back to a 100 ms queue, and starting the device only after
-300 ms of sound - the last two silenced the film). They are gone; the audio path
-is the simple one: decode, resample, queue on an SDL audio stream, started by the
-first sound queued for it, with the picture on the wall clock.
+The sound now runs on the game's mixer, on a dedicated track fed from the ring
+buffer described in `docs/movie_audio_plan.md`, and the file is read far enough
+ahead that the film's first sound is in hand before the first frame is shown.  A
+`MOVIE_DEBUG=1` line now says which path is running and where the sound really
+is:
 
-The plan for fixing it - and the start-up dropouts with it - is in
-`docs/movie_audio_plan.md`.
+```
+movie: t=4.84 picture=4.84 sound=4.87 (offset -30ms, queued 984ms, mixer)
+```
+
+The old SDL stream path is still there behind `SONICCD_MOVIE_STREAM_AUDIO=1`,
+where the same line shows the ~885 ms it always had (`... device 23ms, stream`).
+
+Attempts that were tried earlier and reverted stay reverted, because none of them
+addressed the interleave: delaying the picture by a fixed offset and
+`MOVIE_AUDIO_OFFSET_MS`, an audio-master clock that made the picture stutter while
+the device started, holding the sound back to a 100 ms queue, and starting the
+device only after 300 ms of sound (the last two silenced the film).

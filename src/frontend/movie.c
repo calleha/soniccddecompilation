@@ -28,8 +28,15 @@ void Movie_Shutdown(void) {}
 #include <libswresample/swresample.h>
 #include <libswscale/swscale.h>
 
+#include "sound.h"
+
 #define MOVIE_AUDIO_RATE 44100
 #define MOVIE_AUDIO_CHANNELS 2
+/* Room for the decoded sound waiting for the mixer: the demuxer hands the movie
+   up to a second of sound ahead of the picture, so there is plenty of slack in
+   ~5.9 s of 44.1 kHz stereo 16-bit. */
+#define MOVIE_AUDIO_RING_BYTES (1024 * 1024)
+#define MOVIE_AUDIO_FRAME_BYTES (MOVIE_AUDIO_CHANNELS * (int)sizeof(Sint16))
 
 typedef struct {
     const char *candidates[3];
@@ -56,6 +63,17 @@ static const movie_entry kMovies[] = {
 /* sws_scale works in chunks and is allowed to write a few pixels past the
    right edge of the picture it produces, so the buffer has slack after it. */
 #define MOVIE_RGBA_SLACK 64
+/* How many video packets may be held back while the sound is read ahead: eight
+   seconds of a 30 fps film, far more than any interleave lead needs, and a
+   ceiling so a file with its sound at the end cannot eat memory. */
+#define MOVIE_VIDEO_QUEUE_MAX 240
+/* How much sound to have in hand before the picture starts, and how much to keep
+   in hand while it runs.  The films put all of a second of picture ahead of any
+   sound in the file (see Movie_ReadAhead), so the first figure has to be larger
+   than that lead for the sound to start with the picture instead of a second
+   after it; the second only has to leave a margin. */
+#define MOVIE_AUDIO_PREFILL_MS 2000
+#define MOVIE_AUDIO_AHEAD_MS 1000
 
 static struct {
     AVFormatContext *format;
@@ -66,6 +84,12 @@ static struct {
     AVPacket *packet;
     AVFrame *frame;
     AVFrame *audio_frame;
+    /* Video packets read while the sound is read ahead, kept in file order so
+       the picture loses no frames (see Movie_Prefill). */
+    AVPacket video_queue[MOVIE_VIDEO_QUEUE_MAX];
+    int video_queue_head;
+    int video_queue_count;
+    int at_end;
     int video_stream;
     int audio_stream;
     int width;
@@ -77,18 +101,27 @@ static struct {
     double time_base;
     double frame_duration;
     SDL_Texture *texture;
-    SDL_AudioStream *sound;
+    /* Decoded sound waiting to be handed to the audio path below. */
     Uint8 *pixels;
-    /* Play position of the sound coming out of the device, which is what the
-       picture is timed against (see Movie_Clock()). */
-    Uint64 fed_audio_bytes;
-    /* How far the picture is held back so that it lines up with the sound: the
-       device's buffer, or MOVIE_AUDIO_OFFSET_MS when that is given. */
+    /* The old audio path, kept behind SONICCD_MOVIE_STREAM_AUDIO so the two can
+       be compared by ear: an SDL audio stream with a device of its own. */
+    SDL_AudioStream *sound;
     double device_latency;
-    double audio_offset;
-    double audio_clock;
-    Uint64 audio_clock_moved;
     int audio_started;
+    /* The mixer path: the same decoded sound in a ring buffer, which the game's
+       mixer pulls through an SDL_IOStream (Movie_AudioRead) on the movie's own
+       track - one audio device and one latency for the whole port.  The decoder
+       writes at audio_write, the mixer reads at audio_read, and audio_fill is
+       how much is waiting between them. */
+    SDL_IOStream *audio_io;
+    SDL_Mutex *audio_lock;
+    Uint8 *audio_ring;
+    size_t audio_capacity;
+    size_t audio_read;
+    size_t audio_write;
+    size_t audio_fill;
+    Uint64 fed_audio_frames;
+    Uint64 silence_bytes;
     /* Set when the first frame has been presented: the picture and the sound
        both start from there, so the time spent decoding the first frame cannot
        put the sound ahead of the picture. */
@@ -104,17 +137,41 @@ static struct {
 static void Movie_Release(void) {
     movie.playing = 0;
 
+    /* Let go of the video packets that were read ahead. */
+    while (movie.video_queue_count > 0) {
+        av_packet_unref(&movie.video_queue[movie.video_queue_head]);
+        movie.video_queue_head++;
+        movie.video_queue_count--;
+    }
+    movie.video_queue_head = 0;
+    movie.at_end = 0;
+
+    /* Sound first: the mixer may be reading the ring right now, so its track is
+       stopped and detached before anything it touches goes away. */
     if (movie.sound) {
         SDL_DestroyAudioStream(movie.sound);
         movie.sound = NULL;
     }
+    Sound_EndMovieAudio();
+    if (movie.audio_io) {
+        SDL_CloseIO(movie.audio_io);
+        movie.audio_io = NULL;
+    }
+    if (movie.audio_lock) {
+        SDL_DestroyMutex(movie.audio_lock);
+        movie.audio_lock = NULL;
+    }
+    SDL_free(movie.audio_ring);
+    movie.audio_ring = NULL;
+    movie.audio_capacity = 0;
+    movie.audio_read = 0;
+    movie.audio_write = 0;
+    movie.audio_fill = 0;
+    movie.fed_audio_frames = 0;
+    movie.silence_bytes = 0;
     movie.video_done = 0;
     movie.drain_deadline = 0;
-    movie.fed_audio_bytes = 0;
     movie.device_latency = 0.0;
-    movie.audio_offset = 0.0;
-    movie.audio_clock = 0.0;
-    movie.audio_clock_moved = 0;
     movie.audio_started = 0;
     movie.started = 0;
     if (movie.texture) {
@@ -245,6 +302,38 @@ static int Movie_AudioStream(void) {
     return -1;
 }
 
+/* SONICCD_MOVIE_STREAM_AUDIO=1 keeps the older path (an SDL audio stream with a
+   device of its own) instead of the game mixer, so the two can be compared by
+   ear; drop the switch once the mixer path is confirmed - see
+   docs/movie_audio_plan.md. */
+static int Movie_UseStreamAudio(void) {
+    static int enabled = -1;
+
+    if (enabled < 0) {
+        const char *option = SDL_getenv("SONICCD_MOVIE_STREAM_AUDIO");
+        enabled = (option && *option && *option != '0') ? 1 : 0;
+    }
+    return enabled;
+}
+
+static size_t SDLCALL Movie_AudioRead(void *userdata, void *ptr, size_t size,
+                                      SDL_IOStatus *status);
+static Sint64 SDLCALL Movie_AudioSize(void *userdata);
+static Sint64 SDLCALL Movie_AudioSeek(void *userdata, Sint64 offset,
+                                      SDL_IOWhence whence);
+
+/* The ring as the mixer sees it: a stream of raw PCM that only goes forward and
+   whose length is not known up front. */
+static const SDL_IOStreamInterface kMovieAudioStream = {
+    sizeof(SDL_IOStreamInterface), /* version */
+    Movie_AudioSize,
+    Movie_AudioSeek,
+    Movie_AudioRead,
+    NULL, /* write */
+    NULL, /* flush */
+    NULL, /* close: the movie owns the ring */
+};
+
 static int Movie_OpenAudio(void) {
     const AVCodec *codec;
     SDL_AudioSpec spec;
@@ -284,34 +373,170 @@ static int Movie_OpenAudio(void) {
     spec.format = SDL_AUDIO_S16;
     spec.channels = MOVIE_AUDIO_CHANNELS;
     spec.freq = MOVIE_AUDIO_RATE;
-    /* Opened paused; Movie_StartAudio() resumes it once enough sound is queued
-       for it, so it does not start on an empty stream. */
-    movie.sound = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
-                                            &spec, NULL, NULL);
-    /* Started by the first sound that is queued for it (see Movie_QueueAudio),
-       so it does not run on an empty queue - that was audible as a click or two
-       at the start of a movie. */
-    if (movie.sound) {
-        SDL_AudioDeviceID device = SDL_GetAudioStreamDevice(movie.sound);
-        SDL_AudioSpec device_spec;
-        int frames = 0;
 
-        /* The device keeps a buffer of its own between the stream and the
-           speaker; without it in the clock the picture still leads the sound by
-           that much.  MOVIE_AUDIO_OFFSET_MS replaces it, for a machine where the
-           sound server adds more than the device reports. */
-        if (device != 0 &&
-            SDL_GetAudioDeviceFormat(device, &device_spec, &frames) &&
-            frames > 0 && device_spec.freq > 0) {
-            movie.device_latency = (double)frames / (double)device_spec.freq;
+    if (Movie_UseStreamAudio()) {
+        /* The old path, for comparing the two by ear: an audio stream with a
+           device of its own, which carries the demuxer's whole interleave lead
+           as its own queue (that lead is the ~1 s the sound used to trail by). */
+        movie.sound =
+            SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec,
+                                     NULL, NULL);
+        /* Started by the first sound that is queued for it (see
+           Movie_QueueAudio), so it does not run on an empty queue - that was
+           audible as a click or two at the start of a movie. */
+        if (movie.sound) {
+            SDL_AudioDeviceID device = SDL_GetAudioStreamDevice(movie.sound);
+            SDL_AudioSpec device_spec;
+            int frames = 0;
+
+            if (device != 0 &&
+                SDL_GetAudioDeviceFormat(device, &device_spec, &frames) &&
+                frames > 0 && device_spec.freq > 0) {
+                movie.device_latency =
+                    (double)frames / (double)device_spec.freq;
+            }
         }
-        movie.audio_offset = movie.device_latency;
+        return 1;
+    }
+
+    /* The mixer path: the decoded sound goes into a ring the mixer pulls
+       through Movie_AudioRead, on the movie's own track.  A failure here only
+       costs the sound - the picture still plays. */
+    movie.audio_lock = SDL_CreateMutex();
+    movie.audio_ring = SDL_malloc(MOVIE_AUDIO_RING_BYTES);
+    movie.audio_capacity = MOVIE_AUDIO_RING_BYTES;
+    movie.audio_read = 0;
+    movie.audio_write = 0;
+    movie.audio_fill = 0;
+    movie.fed_audio_frames = 0;
+    movie.silence_bytes = 0;
+    if (movie.audio_lock && movie.audio_ring) {
+        movie.audio_io = SDL_OpenIO(&kMovieAudioStream, NULL);
+    }
+    if (!movie.audio_io || !Sound_BeginMovieAudio(movie.audio_io, &spec)) {
+        SDL_Log("movie: no sound (%s)", SDL_GetError());
+        if (movie.audio_io) {
+            SDL_CloseIO(movie.audio_io);
+            movie.audio_io = NULL;
+        }
     }
     return 1;
 }
 
+/* Bytes waiting for the mixer right now. */
+static size_t Movie_AudioQueued(void) {
+    size_t queued;
+
+    if (!movie.audio_lock) {
+        return 0;
+    }
+    SDL_LockMutex(movie.audio_lock);
+    queued = movie.audio_fill;
+    SDL_UnlockMutex(movie.audio_lock);
+    return queued;
+}
+
+/* Decoded sound waiting for the mixer.  The mixer drains in real time while the
+   decoder only runs as fast as the picture needs, so the ring holds the
+   demuxer's interleave lead at most; if it ever did fill up, the newest sound is
+   dropped rather than stalling the picture. */
+static void Movie_AudioQueue(const Uint8 *data, size_t size) {
+    size_t first;
+
+    if (!movie.audio_lock || !movie.audio_ring || size == 0) {
+        return;
+    }
+    SDL_LockMutex(movie.audio_lock);
+    if (size > movie.audio_capacity - movie.audio_fill) {
+        size = movie.audio_capacity - movie.audio_fill;
+    }
+    /* Whole sample frames only: a half frame written here would be served as a
+       half frame later and click. */
+    size -= size % (size_t)MOVIE_AUDIO_FRAME_BYTES;
+    first = movie.audio_capacity - movie.audio_write;
+    if (first > size) {
+        first = size;
+    }
+    memcpy(movie.audio_ring + movie.audio_write, data, first);
+    if (size > first) {
+        memcpy(movie.audio_ring, data + first, size - first);
+    }
+    movie.audio_write = (movie.audio_write + size) % movie.audio_capacity;
+    movie.audio_fill += size;
+    movie.fed_audio_frames += (Uint64)(size / (size_t)MOVIE_AUDIO_FRAME_BYTES);
+    SDL_UnlockMutex(movie.audio_lock);
+}
+
+/* The mixer reads the film's sound through here, on its own thread.  Every read
+   is answered in full: when the decoder has not caught up yet, the rest is
+   silence, because a dry patch must not look like the end of the stream (that
+   would stop the track).  Only once the picture is over and the ring has
+   drained is a real end of stream reported. */
+static size_t SDLCALL Movie_AudioRead(void *userdata, void *ptr, size_t size,
+                                      SDL_IOStatus *status) {
+    Uint8 *out = (Uint8 *)ptr;
+    size_t first;
+    size_t got;
+    size_t missed;
+
+    (void)userdata;
+    if (!movie.audio_lock || size == 0) {
+        if (status) {
+            *status = SDL_IO_STATUS_EOF;
+        }
+        return 0;
+    }
+    SDL_LockMutex(movie.audio_lock);
+    if (movie.audio_fill == 0 && movie.video_done) {
+        SDL_UnlockMutex(movie.audio_lock);
+        if (status) {
+            *status = SDL_IO_STATUS_EOF;
+        }
+        return 0;
+    }
+    got = movie.audio_fill;
+    if (got > size) {
+        got = size;
+    }
+    first = movie.audio_capacity - movie.audio_read;
+    if (first > got) {
+        first = got;
+    }
+    memcpy(out, movie.audio_ring + movie.audio_read, first);
+    if (got > first) {
+        memcpy(out + first, movie.audio_ring, got - first);
+    }
+    movie.audio_read = (movie.audio_read + got) % movie.audio_capacity;
+    movie.audio_fill -= got;
+    missed = size - got;
+    movie.silence_bytes += (Uint64)missed;
+    SDL_UnlockMutex(movie.audio_lock);
+
+    if (missed > 0) {
+        memset(out + got, 0, missed);
+    }
+    return size;
+}
+
+static Sint64 SDLCALL Movie_AudioSize(void *userdata) {
+    (void)userdata;
+    return -1; /* length unknown: the film decides when it ends */
+}
+
+static Sint64 SDLCALL Movie_AudioSeek(void *userdata, Sint64 offset,
+                                      SDL_IOWhence whence) {
+    (void)userdata;
+    /* The mixer seeks to the start of its input before it plays; the ring only
+       goes forward, so that is all this stream can promise. */
+    if (whence == SDL_IO_SEEK_SET && offset == 0) {
+        return 0;
+    }
+    return SDL_SetError("the movie's sound stream only plays from the start");
+}
+
 static void Movie_QueueAudio(const AVPacket *packet) {
-    if (!movie.audio || !movie.resampler || !movie.sound) {
+    if (!movie.audio || !movie.resampler ||
+        (!movie.sound && !movie.audio_io)) {
         return;
     }
     if (avcodec_send_packet(movie.audio, packet) < 0) {
@@ -333,14 +558,16 @@ static void Movie_QueueAudio(const AVPacket *packet) {
                                 (const Uint8 **)movie.audio_frame->extended_data,
                                 movie.audio_frame->nb_samples);
         if (converted > 0) {
-            int bytes = converted * MOVIE_AUDIO_CHANNELS * (int)sizeof(Sint16);
+            int bytes = converted * MOVIE_AUDIO_FRAME_BYTES;
 
-            if (SDL_PutAudioStreamData(movie.sound, buffer, bytes)) {
-                movie.fed_audio_bytes += (Uint64)bytes;
-                if (!movie.audio_started) {
+            if (movie.sound) {
+                if (SDL_PutAudioStreamData(movie.sound, buffer, bytes) &&
+                    !movie.audio_started) {
                     movie.audio_started = 1;
                     SDL_ResumeAudioStreamDevice(movie.sound);
                 }
+            } else {
+                Movie_AudioQueue(buffer, (size_t)bytes);
             }
         }
         av_free(buffer);
@@ -348,31 +575,110 @@ static void Movie_QueueAudio(const AVPacket *packet) {
     }
 }
 
+/* Reads one packet from the file: sound goes straight into the audio path, the
+   picture's packets are queued so the sound can be read ahead without losing a
+   frame.  Returns 0 at the end of the file. */
+static int Movie_ReadPacket(void) {
+    if (movie.at_end) {
+        return 0;
+    }
+    if (av_read_frame(movie.format, movie.packet) < 0) {
+        movie.at_end = 1;
+        return 0;
+    }
+    if (movie.packet->stream_index == movie.audio_stream) {
+        Movie_QueueAudio(movie.packet);
+        av_packet_unref(movie.packet);
+        return 1;
+    }
+    if (movie.packet->stream_index == movie.video_stream) {
+        if (movie.video_queue_count >= MOVIE_VIDEO_QUEUE_MAX) {
+            /* Only the read-ahead can fill the queue, and it stops at this
+               ceiling; should it ever be hit, lose the packet rather than hold
+               the whole film for it. */
+            SDL_Log("movie: video queue full, dropping a packet");
+            av_packet_unref(movie.packet);
+            return 1;
+        }
+        {
+            int index =
+                (movie.video_queue_head + movie.video_queue_count) %
+                MOVIE_VIDEO_QUEUE_MAX;
+
+            av_packet_move_ref(&movie.video_queue[index], movie.packet);
+            movie.video_queue_count++;
+        }
+        return 1;
+    }
+    av_packet_unref(movie.packet);
+    return 1;
+}
+
+/* Hands the video decoder the next picture packet, from the queue when the
+   sound was read ahead of the picture, else from the file.  Returns 0 at the end
+   of the stream. */
+static int Movie_NextVideoPacket(void) {
+    for (;;) {
+        if (movie.video_queue_count > 0) {
+            av_packet_move_ref(movie.packet,
+                               &movie.video_queue[movie.video_queue_head]);
+            movie.video_queue_head =
+                (movie.video_queue_head + 1) % MOVIE_VIDEO_QUEUE_MAX;
+            movie.video_queue_count--;
+            return 1;
+        }
+        if (movie.at_end) {
+            return 0;
+        }
+        if (!Movie_ReadPacket()) {
+            return 0;
+        }
+    }
+}
+
 /* Pulls packets until one video frame comes out, feeding audio as it goes.
    Returns 0 at the end of the stream. */
 static int Movie_DecodeFrame(void) {
     for (;;) {
-        int result = av_read_frame(movie.format, movie.packet);
+        int result;
 
-        if (result < 0) {
+        if (!Movie_NextVideoPacket()) {
             if (avcodec_send_packet(movie.video, NULL) >= 0 &&
                 avcodec_receive_frame(movie.video, movie.frame) == 0) {
                 return 1;
             }
             return 0;
         }
-        if (movie.packet->stream_index == movie.video_stream) {
-            result = avcodec_send_packet(movie.video, movie.packet);
-            av_packet_unref(movie.packet);
-            if (result >= 0 &&
-                avcodec_receive_frame(movie.video, movie.frame) == 0) {
-                return 1;
-            }
-        } else if (movie.packet->stream_index == movie.audio_stream) {
-            Movie_QueueAudio(movie.packet);
-            av_packet_unref(movie.packet);
-        } else {
-            av_packet_unref(movie.packet);
+        result = avcodec_send_packet(movie.video, movie.packet);
+        av_packet_unref(movie.packet);
+        if (result >= 0 && avcodec_receive_frame(movie.video, movie.frame) == 0) {
+            return 1;
+        }
+    }
+}
+
+/* The films interleave their sound well behind the picture - OPN.OGV puts the
+   whole first second of picture before any of its sound in the file - so reading
+   the file in step with the picture would start the film silent and leave the
+   whole soundtrack that far behind, which is exactly how the sound used to run a
+   second late.  This reads packets ahead of the picture until the sound in hand
+   reaches `target_ms`, queueing the picture packets met on the way so the film
+   still shows every frame, in order.  It runs once before the first frame (so
+   the sound that belongs at the start is there when the track starts) and then
+   every frame, keeping a margin between the sound and the picture above zero.
+   The old SDL stream path is left to start its own device and is not read
+   ahead. */
+static void Movie_ReadAhead(int target_ms) {
+    size_t target = (size_t)MOVIE_AUDIO_RATE * (size_t)target_ms / 1000 *
+                    (size_t)MOVIE_AUDIO_FRAME_BYTES;
+
+    if (movie.sound || !movie.audio_io) {
+        return;
+    }
+    while (!movie.at_end && Movie_AudioQueued() < target &&
+           movie.video_queue_count < MOVIE_VIDEO_QUEUE_MAX) {
+        if (!Movie_ReadPacket()) {
+            break;
         }
     }
 }
@@ -488,24 +794,71 @@ Sint32 Movie_Stat(void) {
 
 int Movie_IsPlaying(void) { return movie.playing; }
 
+/* True once the mixer's track has played every sample the decoder handed it,
+   silence padding included, so releasing the movie cannot cut the last note. */
+static int Movie_MixerDrained(void) {
+    Sint64 played = Sound_GetMovieAudioPosition();
+    Uint64 silence_frames;
+    Uint64 fed_frames;
+    int drained;
+
+    if (played < 0) {
+        return 1;
+    }
+    if (!movie.audio_lock) {
+        return 1;
+    }
+    SDL_LockMutex(movie.audio_lock);
+    silence_frames = movie.silence_bytes / (Uint64)MOVIE_AUDIO_FRAME_BYTES;
+    fed_frames = movie.fed_audio_frames;
+    SDL_UnlockMutex(movie.audio_lock);
+
+    drained = (Uint64)played >= fed_frames + silence_frames;
+    return drained;
+}
+
 /* The picture is over.  Decoded sound may still be waiting for the device, and
    the last second of a cutscene should not be cut off, so keep feeding it for a
    moment before the movie reports itself finished. */
 static void Movie_Finish(void) {
-    if (movie.sound && SDL_GetAudioStreamQueued(movie.sound) > 0 &&
-        SDL_GetTicks() < movie.drain_deadline) {
-        return;
+    if (SDL_GetTicks() < movie.drain_deadline) {
+        if (movie.sound) {
+            if (SDL_GetAudioStreamQueued(movie.sound) > 0) {
+                return;
+            }
+        } else if (!Movie_MixerDrained()) {
+            return;
+        }
     }
     Movie_Release();
 }
 
+/* Where the film's sound is, in seconds of the film, from what the mixer has
+   played on the movie's track.  The samples that had to be padded with silence
+   while the decoder was behind are subtracted, since they are not part of the
+   film; the figure still leads the speaker by the device's own buffer, which is
+   the small print of any mixer path. */
+static double Movie_AudioFilmPosition(void) {
+    Sint64 played = Sound_GetMovieAudioPosition();
+    Uint64 silence_frames = movie.silence_bytes / (Uint64)MOVIE_AUDIO_FRAME_BYTES;
+
+    if (played < 0 || (Uint64)played < silence_frames) {
+        return 0.0;
+    }
+    return (double)((Uint64)played - silence_frames) / (double)MOVIE_AUDIO_RATE;
+}
+
 /* MOVIE_DEBUG=1 in the environment logs, once a second, where the picture and
    the sound are, so a report of "the sound is late" can be checked without a
-   debugger. */
+   debugger.  `sound` is the film position of the sound that has been played
+   (mixer path) or of what is queued for the stream (old path), `queued` is how
+   much sound is still waiting, and the last word says which path is running. */
 static void Movie_DebugTrace(double elapsed, double clock, double video_pos) {
     static int enabled = -1;
     static Uint64 last_log;
     Uint64 now = SDL_GetTicks();
+    double sound;
+    double queued;
 
     if (enabled < 0) {
         const char *option = SDL_getenv("MOVIE_DEBUG");
@@ -515,12 +868,27 @@ static void Movie_DebugTrace(double elapsed, double clock, double video_pos) {
         return;
     }
     last_log = now;
-    SDL_Log("movie: t=%.2f picture=%.2f sound=%.2f (offset %.0fms, device %.0fms, "
-            "queued %.0fms)",
-            elapsed, video_pos, clock,
-            (elapsed - clock) * 1000.0, movie.device_latency * 1000.0,
-            (double)SDL_GetAudioStreamQueued(movie.sound) * 1000.0 /
-                (MOVIE_AUDIO_RATE * MOVIE_AUDIO_CHANNELS * 2));
+    if (!movie.audio) {
+        SDL_Log("movie: t=%.2f picture=%.2f sound=- (silent film)", elapsed,
+                video_pos);
+        return;
+    }
+    if (movie.sound) {
+        queued = (double)SDL_GetAudioStreamQueued(movie.sound);
+        sound = clock - queued / (MOVIE_AUDIO_FRAME_BYTES * MOVIE_AUDIO_RATE);
+        SDL_Log("movie: t=%.2f picture=%.2f sound=%.2f (offset %.0fms, queued "
+                "%.0fms, device %.0fms, stream)",
+                elapsed, video_pos, sound, (elapsed - sound) * 1000.0,
+                queued * 1000.0 / (MOVIE_AUDIO_FRAME_BYTES * MOVIE_AUDIO_RATE),
+                movie.device_latency * 1000.0);
+        return;
+    }
+    queued = (double)Movie_AudioQueued();
+    sound = Movie_AudioFilmPosition();
+    SDL_Log("movie: t=%.2f picture=%.2f sound=%.2f (offset %.0fms, queued %.0fms, "
+            "mixer)",
+            elapsed, video_pos, sound, (elapsed - sound) * 1000.0,
+            queued * 1000.0 / (MOVIE_AUDIO_FRAME_BYTES * MOVIE_AUDIO_RATE));
 }
 
 void Movie_Update(SDL_Renderer *renderer) {
@@ -537,15 +905,19 @@ void Movie_Update(SDL_Renderer *renderer) {
                   ? (double)(SDL_GetTicks() - movie.start_ticks) / 1000.0
                   : 0.0;
 
+    Movie_ReadAhead(movie.started ? MOVIE_AUDIO_AHEAD_MS
+                                  : MOVIE_AUDIO_PREFILL_MS);
+
     if (movie.video_done) {
         Movie_Finish();
         return;
     }
     /* The picture runs on the wall clock, one frame per frame time, like the
        game itself: it cannot stutter waiting for the audio device and cannot be
-       stretched by one.  The sound is queued as it is decoded; where the two end
-       up relative to each other is a property of the audio path, not of this
-       clock (see the note on the sound lead in docs/attract_mode_and_fmv.md). */
+       stretched by one.  The sound is kept level with it by the read-ahead above
+       and by the mixer path (docs/movie_audio_plan.md); only a hardware audio
+       clock that runs at a different rate than the system clock can still make
+       the two drift apart, by a fraction of a percent. */
     clock = elapsed;
 
     /* Behind the clock (a slow machine, or the start of a file): throw frames
@@ -586,6 +958,13 @@ void Movie_Update(SDL_Renderer *renderer) {
         if (!movie.started) {
             movie.started = 1;
             movie.start_ticks = SDL_GetTicks();
+            /* The picture and the sound start together, from the first frame
+               that is on the screen: the film's sound track is started here, so
+               the mixer cannot run ahead of the picture while the first frame is
+               still being decoded. */
+            if (!movie.sound) {
+                Sound_PlayMovieAudio();
+            }
         }
 
         stamp = (movie.frame->best_effort_timestamp == AV_NOPTS_VALUE)

@@ -7,6 +7,7 @@
 static MIX_Mixer *mixer;
 static MIX_Track *musicTrack;
 static MIX_Audio *musicAudio;
+static MIX_Track *movieTrack;
 static Sint16 currTrack = -1;
 
 typedef struct {
@@ -112,6 +113,53 @@ void CDPause(Sint16 mode) {
 
 void WaveAllStop(void) {
 	SDL_Log("WaveAllStop()");
+}
+
+/* The movie's track: created on first use, given the film's raw PCM stream as
+   its input, and left silent between movies so nothing of the last cutscene can
+   still be heard over the next one. */
+int Sound_BeginMovieAudio(SDL_IOStream *io, const SDL_AudioSpec *spec) {
+	if (!mixer || !io || !spec) {
+		return 0;
+	}
+	if (!movieTrack) {
+		movieTrack = MIX_CreateTrack(mixer);
+		if (!movieTrack) {
+			SDL_Log("Couldn't create the movie track: %s", SDL_GetError());
+			return 0;
+		}
+	}
+	MIX_StopTrack(movieTrack, 0);
+	if (!MIX_SetTrackRawIOStream(movieTrack, io, spec, false)) {
+		SDL_Log("Couldn't set the movie track's stream: %s", SDL_GetError());
+		return 0;
+	}
+	return 1;
+}
+
+void Sound_PlayMovieAudio(void) {
+	if (movieTrack) {
+		MIX_PlayTrack(movieTrack, 0);
+	}
+}
+
+/* Sample frames the movie track has played, -1 when there is no track.  The
+   movie uses it to report where its sound really is. */
+Sint64 Sound_GetMovieAudioPosition(void) {
+	if (!movieTrack) {
+		return -1;
+	}
+	return MIX_GetTrackPlaybackPosition(movieTrack);
+}
+
+void Sound_EndMovieAudio(void) {
+	if (!movieTrack) {
+		return;
+	}
+	MIX_StopTrack(movieTrack, 0);
+	/* Detach the stream before the movie frees it: the mixer must not be able
+	   to read from it any more. */
+	MIX_SetTrackRawIOStream(movieTrack, NULL, NULL, false);
 }
 
 int Sound_Init(void) {
