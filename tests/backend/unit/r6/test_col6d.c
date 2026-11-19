@@ -388,6 +388,64 @@ static void test_flashin_boss6_and_fadeproc_defaults(test_context *ctx) {
     TEST_ASSERT_EQ_INT(ctx, 1, FadeProc());
 }
 
+/* The boss flash restores only the entries its fade-in covers: flashout()
+   whitens 0-63, flashin_boss6() then aims the restore at 0-47 (colorcnt = 47)
+   and flashin_new() re-whitens entry 32 on every step on purpose.  Entry 48 and
+   the rest of the last palette line keep the flash's white; the only pieces that
+   touch them again are the stopped background cycle, which blackens entry 49,
+   and the boss's own colour animation.
+
+   Entry 32 is the round's backdrop (FRAMEBUFFER_CLEAR_INDEX in
+   src/frontend/graphics.cpp fills the framebuffer with it, which is what the
+   reference's BackgroundBMPCreate() backdrop is), so it has to be inside both
+   the flash range and the restore range - and the animation's last step,
+   fset_boss6(0), paints it back to black.  See docs/r63d_white_background_bug.md. */
+static void test_boss_flash_repaints_the_backdrop_entry(test_context *ctx) {
+    int frame;
+    Uint8 chg_cnt = 0;
+
+    reset_col6d_state();
+    colorset2(0); /* working palette: advacolor */
+    colorset(0);  /* restore copy: advacolor */
+    bossflag = 32; /* the boss is dead: the cycle runs with col6a3col_stop */
+
+    flashout();
+    TEST_ASSERT_EQ_INT(ctx, 4, fade_flag_storage);
+    for (frame = 0; frame < 64 && FadeProc() == 0; ++frame) {
+    }
+    fade_flag_storage = 0;
+    assert_palette(ctx, colorwk[32], 224, 224, 224, 1, "flash whitens 32");
+    assert_palette(ctx, colorwk[48], 224, 224, 224, 1, "flash whitens 48");
+
+    flashin_boss6();
+    TEST_ASSERT_EQ_INT(ctx, 3, fade_flag_storage);
+    for (frame = 0; frame < 64 && FadeProc() == 0; ++frame) {
+    }
+    fade_flag_storage = 0;
+
+    /* 0-47 come back from the restore copy ... */
+    assert_palette(ctx, colorwk[0], 0, 0, 0, 1, "restored entry 0");
+    assert_palette(ctx, colorwk[33], 160, 192, 160, 1, "restored entry 33");
+    /* ... except 32, which the fade-in keeps white on purpose ... */
+    assert_palette(ctx, colorwk[32], 224, 224, 224, 1, "flashin keeps 32");
+    /* ... and 48 is never restored at all. */
+    assert_palette(ctx, colorwk[48], 224, 224, 224, 1, "flashin skips 48");
+
+    /* The boss's own colour animation ends with the backdrop back to black. */
+    fset_boss6(0, &chg_cnt);
+    assert_palette(ctx, colorwk[32], 0, 0, 0, 1, "fset_boss6(0) backdrop");
+    assert_palette(ctx, colorwk[48], 224, 224, 224, 1, "48 stays white");
+
+    /* colchg_stop() parks the cycles for 128 frames, then the stopped cycle
+       paints entry 49 black again. */
+    memset(clchgtim, 128, sizeof(clchgtim));
+    memset(clchgcnt, 0, sizeof(clchgcnt));
+    for (frame = 0; frame < 200; ++frame) {
+        clchgctr();
+    }
+    assert_palette(ctx, colorwk[49], 0, 0, 0, 1, "stopped cycle blackens 49");
+}
+
 TEST_MAIN_BEGIN;
 test_col6d_tables_capture_palette_contract(&ctx);
 test_clchg_sub0_waits_updates_and_wraps(&ctx);
@@ -398,4 +456,5 @@ test_direct_fade_helpers_leave_matching_palette_entries_alone(&ctx);
 test_colorset_routes_to_palette_work_buffers(&ctx);
 test_boss_fade_helpers_step_and_sparse_slots(&ctx);
 test_flashin_boss6_and_fadeproc_defaults(&ctx);
+test_boss_flash_repaints_the_backdrop_entry(&ctx);
 TEST_MAIN_END

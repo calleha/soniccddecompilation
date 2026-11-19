@@ -49,6 +49,24 @@ static bool launchFullscreen;
 #define PLANET_ROTATE_GRID_H 8
 #define PLANET_ROTATE_SCREEN_Y 24
 #define PLANET_ROTATE_SCREEN_H 176
+
+/* Colour index the framebuffer is cleared with before the planes are drawn.
+   Tile and sprite pixels with index 0 are the surfaces' colour key, so every
+   transparent pixel of a round's tiles shows this index - which is the
+   reference's backdrop bitmap: BackgroundBMPCreate() (WINEXE/GRAPHICS.C:810)
+   fills the 320x224 background with surface value 0x30 for a round.  Surface
+   value and game palette are not the same numbering: makeFullScreenPalette()
+   (WINEXE/GRAPHICS.C:2175-2199) puts gpColorwk[0..63] at surface entries 16-79,
+   so the backdrop is colorwk[0x30 - 16] = colorwk[32].  This port's palette maps
+   colorwk[k] to screen entry k, so the backdrop has to be index 32, i.e. the
+   same palette entry the reference shows.
+
+   It must be a game entry rather than a colour nothing writes: the palette
+   flashes and fades the rounds run repaint it like every other colour, which is
+   what makes a full-screen flash (R6's boss, R63C/D) cover the backdrop too -
+   and R6's boss restore paints it back to black (see
+   docs/r63d_white_background_bug.md). */
+#define FRAMEBUFFER_CLEAR_INDEX 32
 typedef struct {
 	char type[4];
 	Sint32 endOffset;
@@ -1560,7 +1578,7 @@ void Graphics_Draw(SDL_Renderer *renderer, Sint32 scraHPosiw, Sint32 scrbHPosiw,
 	lastFgViewY = fgViewY;
 	lastBgViewY = bgViewY;
 	UpdatePalette();
-	SDL_FillSurfaceRect(framebuffer, NULL, 48);
+	SDL_FillSurfaceRect(framebuffer, NULL, FRAMEBUFFER_CLEAR_INDEX);
 	if (hscrollbuff[0].w.l || hscrollbuff[1].w.l || hscrollbuff[32].w.l || hscrollbuff[96].w.l) {
 		DrawGridPlaneSheared(framebuffer, 2, bgViewY);
 	}
