@@ -1,0 +1,53 @@
+Restart stage with the three jump buttons, from the keyboard.
+
+The stage module already restarts the stage when A+B+C arrive in the same frame
+(src/game.c, the give-up branch, matching GAME.C:360), and the reference frontend
+feeds exactly that synthetic pad frame when its own restart flag is set
+(`swdata1 = 0x70`, WINEXE/WINMAIN.C:2418).  This patch feeds it from the live pad
+as soon as all three jump buttons are held, once per press, so the combination is
+usable with a keyboard - which cannot land three key edges in one 16.7 ms frame.
+
+NOT APPLIED.  This port has no gamepad input yet, and adding that is the proper
+fix: a pad delivers all three button-downs in one poll, so the module's own check
+works unchanged.  Keep this patch for the case that the keyboard route is wanted
+anyway.
+
+Apply from the project root:
+
+    patch -p1 < patches/restart_stage_keyboard.patch
+
+Undo it again with:
+
+    patch -p1 -R < patches/restart_stage_keyboard.patch
+
+See docs/restart_stage.md for the whole story.
+
+--- a/src/frontend/main.c
++++ b/src/frontend/main.c
+@@ -275,6 +275,26 @@
+         padStatus.Release = lastPadOn & ~padStatus.On;
+         /* A running stage demo feeds its recorded pad instead of the live one. */
+         Attract_OverridePad(&joy1, &joy2);
++        /* Restart stage.  The stage module already does it: its give-up branch
++           (GAME.C:360, src/game.c) reloads the stage when all three jump buttons
++           arrive in the same frame - which is also what the reference frontend
++           feeds when its own restart flag is set (`swdata1 = 0x70`,
++           WINEXE/WINMAIN.C:2418).  On a keyboard the three edges almost never
++           land in one 16.7 ms frame, so the synthetic A+B+C frame is fed here as
++           soon as the three are held, and only once per press. */
++        if (!Attract_IsDemo()) {
++            static int restartHeld;
++
++            if ((joy1.b.h & 0x70) == 0x70) {
++                if (!restartHeld) {
++                    restartHeld = 1;
++                    joy1.b.h = 0x70;
++                    joy1.b.l = 0x70;
++                }
++            } else {
++                restartHeld = 0;
++            }
++        }
+         /* A running movie is advanced here rather than from the state that
+            started it, so the player keeps going no matter which DLL is on the
+            screen polling Movie_Stat(). */
