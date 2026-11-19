@@ -449,7 +449,12 @@ void game_init(void) {
     TA_EACreate();
     clwin_init();
     clwin();
-    CDPlay(33);
+    /* Track 27, not the reference's 33.  CD96's disc carried the US
+       soundtrack, where track 33 was the separate copy of the title music the
+       Time Attack menu used.  This port plays the Japanese soundtrack from
+       assets/Music, whose Time Attack music is TimeAttack.ogg at track 27
+       (track 33 of that pack is DAGarden.ogg).  See docs/music_tracks.md. */
+    CDPlay(27);
 }
 
 void DLL_meminit(char ***pBufTbl, void **pFuncTbl) {
