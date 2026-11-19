@@ -70,8 +70,7 @@ void WaveRequest(Sint16 req_no) {
 	MIX_PlayAudio(mixer, soundEffects[req_no]);
 }
 
-void CDPlay(Sint16 track_number) {
-	SDL_Log("CDPlay(%d)", track_number);
+static void Music_Start(Sint16 track_number) {
 	if (track_number < 2 || (track_number - 2 >= SDL_arraysize(musicTbl))) {
 		return;
 	}
@@ -95,12 +94,30 @@ void CDPlay(Sint16 track_number) {
 		SDL_DestroyProperties(options);
 		currTrack = track_number;
 	}
+}
 
+void CDPlay(Sint16 track_number) {
+	SDL_Log("CDPlay(%d)", track_number);
+	/* A request for the track that is already playing is dropped, so the
+	   D.A. Garden's make-up - which asks for the track three times while it
+	   swaps the Little Planet's graphics - plays it once.  The reference gets
+	   the same result by not starting anything until its 60-frame CD countdown
+	   expires (`CDPlay()` and the countdown in WINEXE/WINMAIN.C), but the port
+	   starts at once: the music has to stay in step with the picture, and the
+	   title screen's cue lands on the frame it is asked for. */
+	if (track_number == currTrack && musicTrack && MIX_TrackPlaying(musicTrack)) {
+		return;
+	}
+	Music_Start(track_number);
 }
 
 void CDPause(Sint16 mode) {
 	SDL_Log("CDPause(%d)", mode);
     if (mode == 2) {
+            /* The track is stopping, so forget it: a request for the same one
+               after this has to start it again (the sound test and the menus do
+               exactly that when a track is picked twice). */
+            currTrack = -1;
             MIX_StopTrack(musicTrack, MIX_TrackMSToFrames(musicTrack, 500));
 	}
 	else if (mode == 1) {
