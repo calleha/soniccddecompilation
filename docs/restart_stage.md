@@ -2,8 +2,10 @@
 
 Pressing **A + B + C together** (all three jump buttons) restarts the stage, the
 way the original does, and it works while the game is paused.  The stage module
-has the whole feature and it was left exactly as the reference has it; what it
-needs is input that can reach it, and this port's frontend cannot yet deliver it.
+has the whole feature and it was left exactly as the reference has it.  What it
+needs is input that can deliver three button-downs in one frame: a **gamepad**
+does, and the frontend now supports one (`docs/gamepad_input.md`); a keyboard
+cannot, so the keyboard workaround is parked as a patch (below).
 
 ## What the game does with it
 
@@ -50,22 +52,22 @@ frame), so all three have to be pressed inside the same 16.7 ms frame.
   in an earlier one - so the branch never runs, and pressing the buttons appears
   to do nothing.
 
-## What is parked, and the proper fix
+## With a pad, and with a keyboard
 
-The keyboard workaround - feeding one synthetic `A+B+C` frame as soon as the
-three jump buttons are *held*, once per press, which is the closest keyboard
-equivalent of what a pad delivers - is kept as a patch:
+**A gamepad works as the original does**: the frontend merges SDL3 gamepad
+buttons into the same pad bits as the keyboard (`docs/gamepad_input.md`), and a
+pad delivers all three button-downs in one poll, so the module's own check fires.
+On the 8BitDo M30, the pad's own A, B and C reach the game's A, B and C, so the
+combination is the pad's A+B+C.
+
+**A keyboard still cannot**, because three key-down edges almost never share a
+16.7 ms frame.  The workaround for that - feeding one synthetic `A+B+C` frame as
+soon as the three jump buttons are *held*, once per press - is kept as a patch,
+not applied:
 
 ```
 patches/restart_stage_keyboard.patch      apply with: patch -p1 < patches/restart_stage_keyboard.patch
 ```
-
-It is not applied.  **The proper fix is gamepad input for the frontend**: pad
-buttons polled alongside the keyboard and merged into the same `joy1`/`joy2`
-before `SWdataSet()`, which makes the module's own same-frame check work unchanged
-(and makes the rest of the port controller-friendly).  Once that exists, the
-patch is not needed; until then, it is the only way to use the feature without a
-pad.
 
 ## Verification
 

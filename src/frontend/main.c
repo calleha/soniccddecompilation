@@ -17,6 +17,7 @@
 #include "round.h"
 #include "score.h"
 #include "sound.h"
+#include "gamepad.h"
 #include "special.h"
 #include "ta.h"
 #include "thanks.h"
@@ -85,7 +86,7 @@ int main(int argc, char **argv) {
         argv[argc] = NULL;
     }
 
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
         fprintf(stderr, "Couldn't init SDL: %s\n", SDL_GetError());
         return -1;
     }
@@ -95,6 +96,10 @@ int main(int argc, char **argv) {
         return -1;
     }
     Globals_Init(window, renderer);
+
+    /* A game pad is optional: without one the keyboard is the only pad, exactly
+       as before. */
+    Gamepad_Init();
 
     if (!Sound_Init()) {
         fprintf(stderr, "Sound_Init failed\n");
@@ -248,9 +253,11 @@ int main(int argc, char **argv) {
             if (event.type == SDL_EVENT_QUIT) {
                 running = 0;
             }
+            Gamepad_HandleEvent(&event);
         }
 
         Uint8 pressed = 0;
+        Uint8 padPadBits = 0;
         const bool *keys = SDL_GetKeyboardState(NULL);
         if (keys[SDL_SCANCODE_W]) { pressed |= 0x01; }
         if (keys[SDL_SCANCODE_S]) { pressed |= 0x02; }
@@ -260,6 +267,11 @@ int main(int argc, char **argv) {
         if (keys[SDL_SCANCODE_K]) { pressed |= 0x20; }
         if (keys[SDL_SCANCODE_L]) { pressed |= 0x40; }
         if (keys[SDL_SCANCODE_RETURN]) { pressed |= 0x80; }
+        /* A game pad contributes the same bits as the keys, so the two can be
+           used at the same time (and a pad delivers the real same-frame presses
+           that the stage module's restart combination wants). */
+        padPadBits = Gamepad_Poll();
+        pressed |= padPadBits;
         /* The live pad edges are tracked separately from joy1, because a
            running stage demo replaces joy1 with its recording. */
         static Uint8 lastRealPressed;
@@ -269,8 +281,8 @@ int main(int argc, char **argv) {
         joy1.b.h = pressed;
         joy1.b.l = newlyPressed;
         padStatus.On = 0;
-        if (keys[SDL_SCANCODE_J]) { padStatus.On |= 0x02; }
-        if (keys[SDL_SCANCODE_K]) { padStatus.On |= 0x04; }
+        if (keys[SDL_SCANCODE_J] || (padPadBits & 0x10)) { padStatus.On |= 0x02; }
+        if (keys[SDL_SCANCODE_K] || (padPadBits & 0x20)) { padStatus.On |= 0x04; }
         padStatus.Press = (~lastPadOn) & padStatus.On;
         padStatus.Release = lastPadOn & ~padStatus.On;
         /* A running stage demo feeds its recorded pad instead of the live one. */
@@ -349,6 +361,7 @@ int main(int argc, char **argv) {
         Title_Unload();
     }
     Movie_Shutdown();
+    Gamepad_Shutdown();
     Graphics_Shutdown();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

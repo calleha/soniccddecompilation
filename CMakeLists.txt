@@ -4807,6 +4807,8 @@ add_executable(frontend
   src/frontend/file.c
   src/frontend/file.h
   src/frontend/frontend_state.h
+  src/frontend/gamepad.c
+  src/frontend/gamepad.h
   src/frontend/globals.c
   src/frontend/globals.h
   src/frontend/graphics.cpp
